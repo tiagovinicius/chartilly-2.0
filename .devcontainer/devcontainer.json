@@ -1,0 +1,38 @@
+{
+  "name": "Vibe Coding Dev (Supabase Local, no-compose)",
+  "build": { "dockerfile": "Dockerfile", "context": "." },
+  "runArgs": [
+    "--env-file", ".devcontainer/.env",
+    "--network=host"
+  ],
+  "mounts": [
+  "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
+  ],
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "task.allowAutomaticTasks": "on",
+        "editor.formatOnSave": true,
+        "editor.tabSize": 2,
+        "files.trimTrailingWhitespace": true,
+        "files.autoSave": "afterDelay",
+        "files.autoSaveDelay": 500,
+        "eslint.validate": [
+          "javascript",
+          "typescript",
+          "typescriptreact"
+        ],
+        "codegpt.apiKey": "${env:CODEGPT_API_KEY}",
+        "codegpt.model": "gpt-5"
+      },
+      "extensions": [
+        "GitHub.copilot",
+        "GitHub.copilot-chat",
+        "Supabase.vscode-supabase-extension",
+        "Supabase.postgrestools",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode"
+      ]
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Start Supabase",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "[ -n \"$SUPABASE_ACCESS_TOKEN\" ] && supabase login --token \"$SUPABASE_ACCESS_TOKEN\" || (echo \"SUPABASE_ACCESS_TOKEN vazio\" && exit 1); [ -n \"$SUPABASE_PROJECT_ID\" ] && supabase link --project-ref \"$SUPABASE_PROJECT_ID\" || (echo \"SUPABASE_PROJECT_ID vazio\" && exit 1)"
+      ],
+      "presentation": { "reveal": "always", "panel": "new" },
+      "isBackground": true,
+      "runOptions": { "runOn": "folderOpen" }
+    },
+    {
+      "label": "Start Next.js",
+      "type": "shell",
+      "command": "npm run dev",
+      "isBackground": true,
+      "runOptions": { "runOn": "folderOpen" },
+      "presentation": { "reveal": "always", "panel": "new" }
+    }
+  ]
+}

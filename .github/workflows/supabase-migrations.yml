@@ -1,0 +1,33 @@
+name: Supabase Migrations
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+
+    env:
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Login (CLI)
+        run: supabase login --token "${SUPABASE_ACCESS_TOKEN}"
+
+      - name: Link project
+        run: supabase link --project-ref "${SUPABASE_PROJECT_ID}"
+
+      - name: Push migrations (non-interactive)
+        run: supabase db push
