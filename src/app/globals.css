@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+/* CSS variables aligned with shadcn/ui tokens */
+:root {
+  --background: 0 0% 100%;
+  --foreground: 240 10% 3.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 240 10% 3.9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 240 10% 3.9%;
+  --primary: 336 68% 44%; /* cherry */
+  --primary-foreground: 0 0% 98%;
+  --secondary: 7 100% 88%; /* peach */
+  --secondary-foreground: 336 68% 24%;
+  --muted: 240 4.8% 95.9%;
+  --muted-foreground: 240 3.8% 46.1%;
+  --accent: 337 70% 36%;
+  --accent-foreground: 0 0% 98%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 240 5.9% 90%;
+  --input: 240 5.9% 90%;
+  --ring: 240 5.9% 10%;
+  --radius: 0.75rem;
+}
+
+*{box-sizing:border-box}
+html{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;}
+html,body{margin:0;padding:0;background:hsl(var(--background));color:hsl(var(--foreground))}
+
+/* Typography */
+body{line-height:1.5}
+h1,h2,h3{margin:0 0 .5rem}
+p{margin:.5rem 0}
+
+/* Links */
+a{color:hsl(var(--primary));text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* Focus visibility */
+:focus{outline:none}
+:focus-visible{outline:3px solid var(--pink);outline-offset:2px;border-radius:8px}
+
+/* Buttons are styled via shadcn Button component classes */
+
+/* Card utility for non-component areas */
+.card{background:hsl(var(--card));border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,.06);padding:12px;border:1px solid hsl(var(--border))}
+
+/* Tabs nav */
+.tabs{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--border);display:flex;gap:8px;padding:10px}
+.tabs a{flex:1;text-align:center;padding:12px;border-radius:12px;color:var(--text)}
+.tabs a[aria-current="page"]{background:var(--peach);color:#8b2147;font-weight:700}
+
+/* Skip link */
+.skip-link{position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden}
+.skip-link:focus{left:12px;top:12px;width:auto;height:auto;background:#000;color:#fff;padding:8px 12px;border-radius:8px;z-index:9999}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce){
+  *{animation:none!important;transition:none!important}
+}
