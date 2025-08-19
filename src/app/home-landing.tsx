@@ -6,6 +6,7 @@ type Playlist = { id: string; name: string; tracksTotal: number; imageUrl: strin
 export default function HomeLanding() {
   const [loading, setLoading] = useState(true);
   const [targetImage, setTargetImage] = useState<string | null>(null);
+  const [targetName, setTargetName] = useState<string | null>(null);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
 
   useEffect(() => {
@@ -17,6 +18,7 @@ export default function HomeLanding() {
       if (!mounted) return;
       const img = charts?.target?.imageUrl ?? null;
       setTargetImage(typeof img === 'string' ? img : null);
+      setTargetName(typeof charts?.target?.name === 'string' ? charts.target.name : null);
       const arr = Array.isArray(pls?.playlists) ? (pls.playlists as Playlist[]) : [];
       setPlaylists(arr);
     }).finally(() => { if (mounted) setLoading(false); });
@@ -28,16 +30,21 @@ export default function HomeLanding() {
   return (
     <div>
   <h1 className="text-2xl md:text-3xl font-bold mb-3">Charts</h1>
-  <h2 className="text-xl font-bold mb-2">Top 50 Weekly</h2>
+  <h2 className="text-xl font-bold mb-2">Weekly Top 50</h2>
       <a href="/charts" className="inline-block">
         {loading ? (
           <div className="w-56 aspect-square rounded-md overflow-hidden skeleton" aria-hidden />
         ) : (
           <div
-            className="w-56 aspect-square rounded-md overflow-hidden bg-muted/30 bg-center bg-cover"
+            className="w-56 aspect-square rounded-md overflow-hidden bg-muted/30 bg-center bg-cover relative"
             style={targetImage ? { backgroundImage: `url(${targetImage})` } : undefined}
             aria-label="Target playlist cover"
-          />
+            title={targetName ?? undefined}
+          >
+            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-b from-transparent to-black/60 text-white text-xs px-1 pt-6 pb-1.5">
+              <span className="block truncate">{targetName ?? '—'}</span>
+            </div>
+          </div>
         )}
       </a>
 
