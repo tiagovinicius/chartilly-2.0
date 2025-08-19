@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import { BackButton } from "@/app/components/back-button";
 
 async function getTrack(id: string) {
   // Build absolute URL from incoming request headers and forward cookies for auth
@@ -20,7 +21,8 @@ export default async function TrackPage({ params }: { params: Promise<{ id: stri
   const data = await getTrack(id);
     return (
       <section className="p-4 space-y-4">
-        <h1 className="text-2xl font-bold">{data.title}</h1>
+  <BackButton />
+  <h1 className="text-2xl md:text-3xl font-bold text-center pb-4 text-[hsl(var(--secondary-foreground))]">{data.title}</h1>
         <div className="flex items-center gap-4">
           <div className="w-32 aspect-square rounded-md bg-center bg-cover border" style={data.albumImageUrl ? { backgroundImage: `url(${data.albumImageUrl})` } : undefined} />
           <div>
@@ -51,7 +53,8 @@ export default async function TrackPage({ params }: { params: Promise<{ id: stri
   } catch {
     return (
       <section className="p-4 space-y-4">
-        <h1 className="text-2xl font-bold">Could not load details</h1>
+  <BackButton />
+  <h1 className="text-2xl md:text-3xl font-bold text-center pb-4 text-[hsl(var(--secondary-foreground))]">Could not load details</h1>
         <p className="text-sm text-muted-foreground">Please try again later.</p>
       </section>
     );
