@@ -1,8 +1,8 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { History, Shuffle, ArrowLeft, Play } from "lucide-react";
+import { History, Shuffle, ArrowLeft, Play, Loader2 } from "lucide-react";
 import { Sheet, SheetClose, SheetContent, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 export default function PlaylistDetailPage(){
@@ -16,7 +16,11 @@ export default function PlaylistDetailPage(){
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [history, setHistory] = useState<Array<{ id: string; date: string }>>([]);
-  const [note, setNote] = useState<string>("");
+  const [hasHistory, setHasHistory] = useState<boolean>(false);
+  const [toast, setToast] = useState<{ open: boolean; message: string; variant: "info"|"success"|"error"; loading?: boolean }>({ open: false, message: "", variant: "info" });
+  const [toastTimer, setToastTimer] = useState<number | null>(null);
+  const toastRef = useRef<HTMLDivElement | null>(null);
+  const [toastOffset, setToastOffset] = useState(0);
 
   useEffect(() => {
     let mounted = true;
@@ -27,13 +31,58 @@ export default function PlaylistDetailPage(){
         setTracks(Array.isArray(j.tracks) ? j.tracks : []);
       }
     }).finally(()=>setLoading(false));
+    // prefetch history size to enable/disable History button
+    fetch(`/api/playlists/${id}/history`).then(r=>r.json()).then((j)=>{
+      if(!mounted) return;
+      if (j?.ok && Array.isArray(j.history)) setHasHistory(j.history.length > 0);
+    }).catch(()=>{});
     return () => { mounted = false; };
   }, [id]);
 
   async function doShuffle(){
     setBusy(true);
-    try{ await fetch(`/api/playlists/${id}/shuffle`, { method: 'POST' }); } finally { setBusy(false); }
+    // show shuffling toast
+    if (toastTimer) { window.clearTimeout(toastTimer); setToastTimer(null); }
+    setToast({ open: true, message: 'Shuffling…', variant: 'info', loading: true });
+    try{
+      const res = await fetch(`/api/playlists/${id}/shuffle`, { method: 'POST' });
+      if (res.ok) {
+        // on first shuffle we now have a backup
+        setHasHistory(true);
+        // refresh tracks/meta
+        setLoading(true);
+        try {
+          const j = await fetch(`/api/playlists/${id}`).then(r=>r.json());
+          if (j?.ok) { setMeta(j.meta); setTracks(Array.isArray(j.tracks) ? j.tracks : []); }
+        } finally { setLoading(false); }
+        setToast({ open: true, message: 'Shuffle completed', variant: 'success' });
+        const t = window.setTimeout(()=>{ setToast(s=>({ ...s, open: false })); setToastTimer(null); }, 2600) as unknown as number;
+        setToastTimer(t);
+      } else {
+        setToast({ open: true, message: 'Shuffle failed', variant: 'error' });
+        const t = window.setTimeout(()=>{ setToast(s=>({ ...s, open: false })); setToastTimer(null); }, 2600) as unknown as number;
+        setToastTimer(t);
+      }
+    } finally { setBusy(false); }
   }
+
+  // Keep layout offset equal to toast height while toast is visible
+  useEffect(() => {
+    function refreshOffset(){
+      const el = toastRef.current;
+      setToastOffset(toast.open && el ? el.offsetHeight : 0);
+    }
+    refreshOffset();
+    if (!toast.open) return;
+    const observer = new ResizeObserver(() => refreshOffset());
+    if (toastRef.current) observer.observe(toastRef.current);
+    const onScrollOrResize = () => refreshOffset();
+    window.addEventListener('resize', onScrollOrResize);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', onScrollOrResize);
+    };
+  }, [toast.open]);
 
   async function loadHistory(){
     try{
@@ -41,12 +90,14 @@ export default function PlaylistDetailPage(){
       const j = await res.json();
       if (j?.ok && Array.isArray(j.history)) {
         setHistory(j.history.map((h: any) => ({ id: String(h.id), date: h.created_at })));
+  setHasHistory(j.history.length > 0);
       }
     } catch {}
   }
 
   return (
     <section className="p-4 space-y-4" aria-labelledby="title">
+  {toast.open && <div style={{ height: toastOffset }} aria-hidden="true" />}
       <div className="mt-4 flex items-center justify-start pb-3">
         <Button type="button" variant="secondary" size="icon" className="rounded-full w-12 h-12" aria-label="Back" onClick={()=>router.back()}>
           <ArrowLeft className="w-6 h-6" />
@@ -71,10 +122,10 @@ export default function PlaylistDetailPage(){
           />
         )}
         <div className="flex items-center gap-3 mt-6 mb-6 min-h-[3.5rem]">
-          <Button variant="secondary" size="icon" className="rounded-full w-12 h-12" onClick={()=>setConfirmOpen(true)} aria-label="Shuffle">
+          <Button variant="secondary" size="icon" className="rounded-full w-12 h-12" onClick={()=>setConfirmOpen(true)} aria-label="Shuffle" disabled={busy}>
             <Shuffle className="w-6 h-6" aria-hidden="true" />
           </Button>
-          <Button variant="secondary" size="icon" className="rounded-full w-12 h-12" onClick={()=>{ setHistoryOpen(true); loadHistory(); }} aria-label="History">
+          <Button variant="secondary" size="icon" className="rounded-full w-12 h-12" onClick={()=>{ setHistoryOpen(true); loadHistory(); }} aria-label="History" disabled={!hasHistory}>
             <History className="w-6 h-6" aria-hidden="true" />
           </Button>
           <a href={meta?.externalUrl ?? '#'} target="_blank" rel="noreferrer" aria-label="Open in Spotify">
@@ -99,7 +150,6 @@ export default function PlaylistDetailPage(){
                   try {
                     const res = await fetch(`/api/playlists/${id}/rollback`, { method: 'POST' });
                     if (res.ok) {
-                      setNote('Reverted');
                       // refresh tracks view
                       setLoading(true);
                       fetch(`/api/playlists/${id}`).then(r=>r.json()).then((j)=>{
@@ -108,9 +158,8 @@ export default function PlaylistDetailPage(){
                       // reload history after revert
                       loadHistory();
                     } else {
-                      setNote('Failed to revert');
                     }
-                  } catch { setNote('Failed to revert'); }
+                  } catch {}
                 }}>Revert</Button>
               </li>
             ))}
@@ -135,10 +184,7 @@ export default function PlaylistDetailPage(){
         </SheetContent>
       </Sheet>
 
-      {/* Tracks list */}
-      {note && (
-        <div className="text-xs text-center text-muted-foreground">{note}</div>
-      )}
+  {/* Tracks list */}
       {loading ? (
         <ol className="space-y-3" aria-hidden="true">
           {Array.from({ length: 10 }).map((_, i) => (
@@ -170,6 +216,21 @@ export default function PlaylistDetailPage(){
             <li className="text-sm text-muted-foreground">No tracks.</li>
           )}
         </ol>
+      )}
+
+      {/* Toast */}
+    {toast.open && (
+        <div
+          className={`fixed top-0 inset-x-0 z-[60] px-4 py-2 shadow-md border-b text-sm text-white text-center ${toast.variant === 'success' ? 'bg-emerald-600' : toast.variant === 'error' ? 'bg-red-600' : 'bg-neutral-900/90'}`}
+          role={toast.variant === 'info' && toast.loading ? 'status' : 'alert'}
+          aria-live={toast.variant === 'info' && toast.loading ? 'polite' : 'assertive'}
+      ref={toastRef}
+        >
+          <div className="flex items-center justify-center gap-2">
+            {toast.loading && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
+            <span>{toast.message}</span>
+          </div>
+        </div>
       )}
     </section>
   );
