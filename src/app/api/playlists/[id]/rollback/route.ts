@@ -3,8 +3,8 @@ import { supabase } from "@/lib/supabase-client";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { SpotifyAPI } from "@/lib/spotify-sdk";
 
-export async function POST(_req: NextRequest, { params }: { params: { id: string } }) {
-  const playlistId = params.id;
+export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id: playlistId } = await params;
   if (!playlistId) return Response.json({ ok: false, error: "missing id" }, { status: 400 });
 
   const ownerId = _req.cookies.get("session")?.value;
@@ -25,12 +25,12 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
       .select("id, order_ids")
       .eq("playlist_id", playlistId)
       .order("created_at", { ascending: false })
-      .limit(2);
+      .limit(1);
     if (error) throw error;
-    if (!versions || versions.length < 2) throw new Error("no_previous_version");
-    const [latest, previous] = versions;
+    if (!versions || versions.length === 0) throw new Error("no_backup");
+    const [latest] = versions;
+    await SpotifyAPI.replacePlaylistTracks(token, playlistId, (latest.order_ids as unknown as string[]) ?? []);
     await supabase.from("shuffle_versions").delete().eq("id", latest.id);
-    await SpotifyAPI.replacePlaylistTracks(token, playlistId, previous.order_ids as unknown as string[]);
   }
 
   try {

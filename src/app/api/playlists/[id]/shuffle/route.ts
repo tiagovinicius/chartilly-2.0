@@ -22,8 +22,8 @@ async function getValidAccessToken(ownerId: string): Promise<{ access: string; u
   return { access: user.spotify_access_token as string, userId: user.user_id as string, refresh: user.spotify_refresh_token as string | undefined };
 }
 
-export async function POST(_req: NextRequest, { params }: { params: { id: string } }) {
-  const playlistId = params.id;
+export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id: playlistId } = await params;
   if (!playlistId) return Response.json({ ok: false, error: "missing id" }, { status: 400 });
 
   const ownerId = _req.cookies.get("session")?.value;
@@ -36,8 +36,14 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
       const token = { access_token: access } as const;
       const uris = await SpotifyAPI.getPlaylistTracks(token, playlistId);
       if (uris.length === 0) return Response.json({ ok: false, error: "empty_playlist" }, { status: 400 });
-      const newOrder = shuffle(uris);
-      const { error: insErr } = await supabase.from("shuffle_versions").insert({ playlist_id: playlistId, order_ids: newOrder });
+      // ensure playlist exists for FK
+      const { error: upErr } = await supabase
+        .from("playlists")
+        .upsert({ id: playlistId, owner_id: userId, updated_at: new Date().toISOString() }, { onConflict: "id" });
+      if (upErr) throw upErr;
+  const newOrder = shuffle(uris);
+  // store previous order for rollback
+  const { error: insErr } = await supabase.from("shuffle_versions").insert({ playlist_id: playlistId, order_ids: uris });
       if (insErr) throw insErr;
       const { data: versions } = await supabase
         .from("shuffle_versions")
@@ -66,8 +72,14 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
       const token = { access_token: refreshed.access_token } as const;
       const uris = await SpotifyAPI.getPlaylistTracks(token, playlistId);
       if (uris.length === 0) return Response.json({ ok: false, error: "empty_playlist" }, { status: 400 });
-      const newOrder = shuffle(uris);
-      const { error: insErr2 } = await supabase.from("shuffle_versions").insert({ playlist_id: playlistId, order_ids: newOrder });
+      // ensure playlist exists for FK
+      const { error: upErr2 } = await supabase
+        .from("playlists")
+        .upsert({ id: playlistId, owner_id: userId, updated_at: new Date().toISOString() }, { onConflict: "id" });
+      if (upErr2) throw upErr2;
+  const newOrder = shuffle(uris);
+  // store previous order for rollback
+  const { error: insErr2 } = await supabase.from("shuffle_versions").insert({ playlist_id: playlistId, order_ids: uris });
       if (insErr2) throw insErr2;
       const { data: versions2 } = await supabase
         .from("shuffle_versions")

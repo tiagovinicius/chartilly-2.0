@@ -16,6 +16,7 @@ export default function PlaylistDetailPage(){
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [history, setHistory] = useState<Array<{ id: string; date: string }>>([]);
+  const [note, setNote] = useState<string>("");
 
   useEffect(() => {
     let mounted = true;
@@ -35,10 +36,13 @@ export default function PlaylistDetailPage(){
   }
 
   async function loadHistory(){
-    // Placeholder: would fetch real shuffle history; using synthetic data
-    setHistory([
-      { id: '1', date: new Date().toISOString() },
-    ]);
+    try{
+      const res = await fetch(`/api/playlists/${id}/history`);
+      const j = await res.json();
+      if (j?.ok && Array.isArray(j.history)) {
+        setHistory(j.history.map((h: any) => ({ id: String(h.id), date: h.created_at })));
+      }
+    } catch {}
   }
 
   return (
@@ -91,7 +95,23 @@ export default function PlaylistDetailPage(){
             {history.map(h => (
               <li key={h.id} className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">{new Date(h.date).toLocaleString()}</span>
-                <Button size="sm" variant="ghost" onClick={async ()=>{ await fetch(`/api/playlists/${id}/rollback`, { method: 'POST' }); }}>Revert</Button>
+                <Button size="sm" variant="ghost" onClick={async ()=>{
+                  try {
+                    const res = await fetch(`/api/playlists/${id}/rollback`, { method: 'POST' });
+                    if (res.ok) {
+                      setNote('Reverted');
+                      // refresh tracks view
+                      setLoading(true);
+                      fetch(`/api/playlists/${id}`).then(r=>r.json()).then((j)=>{
+                        if (j?.ok) { setMeta(j.meta); setTracks(j.tracks || []); }
+                      }).finally(()=>setLoading(false));
+                      // reload history after revert
+                      loadHistory();
+                    } else {
+                      setNote('Failed to revert');
+                    }
+                  } catch { setNote('Failed to revert'); }
+                }}>Revert</Button>
               </li>
             ))}
           </ol>
@@ -116,6 +136,9 @@ export default function PlaylistDetailPage(){
       </Sheet>
 
       {/* Tracks list */}
+      {note && (
+        <div className="text-xs text-center text-muted-foreground">{note}</div>
+      )}
       {loading ? (
         <ol className="space-y-3" aria-hidden="true">
           {Array.from({ length: 10 }).map((_, i) => (

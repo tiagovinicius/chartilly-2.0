@@ -3,7 +3,7 @@ import { supabase } from "@/lib/supabase-client";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { SpotifyAPI } from "@/lib/spotify-sdk";
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const ownerSpotifyId = req.cookies.get("session")?.value;
   if (!ownerSpotifyId) return Response.json({ ok: false, error: "unauthorized" }, { status: 401 });
 
@@ -15,7 +15,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
   if (!user?.spotify_access_token) return Response.json({ ok: false, error: "missing_spotify_token" }, { status: 400 });
 
-  const { id } = params;
+  const { id } = await params;
 
   async function load(accessToken: string) {
     const meta = await SpotifyAPI.getPlaylistMeta({ access_token: accessToken }, id);
