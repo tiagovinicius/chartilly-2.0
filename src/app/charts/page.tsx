@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Play, Settings, Upload, Loader2, X } from "lucide-react";
+import { Play, Settings, Upload, Loader2, X, ArrowLeft } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -9,6 +10,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetClose } from "@/components/ui/sheet";
 
 export default function ChartsPage(){
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<{tracks: Array<string | { id: string; name: string; artists: string[]; albumImageUrl: string | null }>, updatedAt: string|null, target?: { id: string|null; name: string|null; imageUrl?: string|null; externalUrl?: string|null }}>({tracks: [], updatedAt: null});
   const [playlists, setPlaylists] = useState<Array<{id:string; name:string; imageUrl?: string|null}>>([]);
@@ -100,9 +102,21 @@ export default function ChartsPage(){
   }
 
   return (
-    <section className={`p-4 space-y-4 pt-16`} aria-labelledby="title">
+  <section className={`p-4 space-y-4 pt-2`} aria-labelledby="title">
       {toast.open && <div style={{ height: toastOffset }} aria-hidden="true" />}
-  <h1 id="title" className="text-2xl md:text-3xl font-bold text-center pb-4 text-[hsl(var(--secondary-foreground))]">Weekly Top 50</h1>
+  <div className="mt-4 flex items-center justify-start pb-3">
+        <Button
+          type="button"
+          variant="secondary"
+          size="icon"
+          className="rounded-full w-12 h-12"
+          aria-label="Back"
+          onClick={() => router.back()}
+        >
+          <ArrowLeft className="w-6 h-6" />
+        </Button>
+      </div>
+      <h1 id="title" className="text-2xl md:text-3xl font-bold text-center pb-4 text-[hsl(var(--secondary-foreground))]">Weekly Top 50</h1>
 
       {/* Header with cover, centered name, circular actions on right */}
   <div className="flex flex-col items-center gap-4 min-h-[18rem]">
