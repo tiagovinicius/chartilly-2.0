@@ -25,17 +25,41 @@
 }
 
 *{box-sizing:border-box}
-html{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;}
+/* Base font families: Inter for body, Poppins for headings (set via next/font variables) */
+html{font-family: inherit;}
 html,body{margin:0;padding:0;background:hsl(var(--background));color:hsl(var(--foreground))}
+/* Avoid layout shift from scrollbar appearance/disappearance */
+html{scrollbar-gutter: stable;}
+body{overflow-y: scroll; font-family: var(--font-inter), ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial}
 
 /* Typography */
-body{line-height:1.5}
-h1,h2,h3{margin:0 0 .5rem}
+body{line-height:1.5;color:hsl(240 5% 26%)} /* slightly lighter dark gray */
+h1{color:hsl(var(--secondary-foreground))} /* dark cherry */
+h2{color:hsl(var(--primary))} /* cherry */
+h1,h2,h3{margin:0 0 .5rem; font-family: var(--font-poppins), var(--font-inter), ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial}
 p{margin:.5rem 0}
 
 /* Links */
 a{color:hsl(var(--primary));text-decoration:none}
 a:hover{text-decoration:underline}
+
+/* Helper: remove default link styling where needed */
+.link-reset{color:inherit !important;text-decoration:none}
+.link-reset:hover{text-decoration:none}
+
+/* Shimmering skeletons */
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.skeleton{
+  background: linear-gradient(90deg,
+    hsl(var(--muted)) 25%,
+    color-mix(in oklab, hsl(var(--muted)) 80%, white) 37%,
+    hsl(var(--muted)) 63%);
+  background-size: 200% 100%;
+  animation: shimmer 1.2s ease-in-out infinite;
+}
 
 /* Focus visibility */
 :focus{outline:none}

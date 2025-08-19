@@ -21,7 +21,7 @@ function SheetContent({ className, children, ...props }: React.ComponentPropsWit
       <SheetOverlay />
       <DialogPrimitive.Content
         className={cn(
-          "fixed inset-x-0 bottom-0 z-50 rounded-t-xl border bg-white dark:bg-neutral-900 p-4 shadow-lg max-h-[85vh] overflow-y-auto data-[state=open]:animate-in data-[state=closed]:animate-out",
+          "fixed inset-x-0 bottom-0 z-50 rounded-t-xl bg-white dark:bg-neutral-900 p-4 shadow-2xl max-h-[85vh] overflow-y-auto data-[state=open]:animate-in data-[state=closed]:animate-out",
           className
         )}
         {...props}

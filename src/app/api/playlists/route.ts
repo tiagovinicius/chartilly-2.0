@@ -25,7 +25,8 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const playlists = await SpotifyAPI.listUserPlaylists({ access_token: user.spotify_access_token }, ownerSpotifyId);
+  // include owned and followed playlists
+  const playlists = await SpotifyAPI.listUserPlaylists({ access_token: user.spotify_access_token });
     // log ok
     await supabaseAdmin.from("events").insert({ user_id: user.user_id, event_type: "list_playlists", status: "ok", payload: { count: playlists.length } });
     return Response.json({ playlists });
@@ -45,7 +46,7 @@ export async function GET(req: NextRequest) {
         .eq("user_id", user.user_id);
       await supabaseAdmin.from("events").insert({ user_id: user.user_id, event_type: "token_refresh", status: "ok" });
 
-      const playlists = await SpotifyAPI.listUserPlaylists({ access_token: refreshed.access_token }, ownerSpotifyId);
+  const playlists = await SpotifyAPI.listUserPlaylists({ access_token: refreshed.access_token });
       await supabaseAdmin.from("events").insert({ user_id: user.user_id, event_type: "list_playlists", status: "ok", payload: { count: playlists.length } });
       return Response.json({ playlists });
     } catch (e2: any) {

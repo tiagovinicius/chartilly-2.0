@@ -30,19 +30,19 @@ export default async function TrackPage({ params }: { params: Promise<{ id: stri
         </div>
         {data.trackWiki && (
           <div>
-            <h2 className="text-lg font-semibold mb-1">About the song</h2>
+            <h2 className="text-2xl font-bold mb-1 text-[hsl(var(--primary))]">About the song</h2>
             <p className="text-sm leading-relaxed" dangerouslySetInnerHTML={{ __html: data.trackWiki }} />
           </div>
         )}
         {data.albumWiki && (
           <div>
-            <h2 className="text-lg font-semibold mb-1">About the album</h2>
+            <h2 className="text-2xl font-bold mb-1 text-[hsl(var(--primary))]">About the album</h2>
             <p className="text-sm leading-relaxed" dangerouslySetInnerHTML={{ __html: data.albumWiki }} />
           </div>
         )}
         {data.artistWiki && (
           <div>
-            <h2 className="text-lg font-semibold mb-1">About the artist</h2>
+            <h2 className="text-2xl font-bold mb-1 text-[hsl(var(--primary))]">About the artist</h2>
             <p className="text-sm leading-relaxed" dangerouslySetInnerHTML={{ __html: data.artistWiki }} />
           </div>
         )}

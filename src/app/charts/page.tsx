@@ -1,9 +1,12 @@
 "use client";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Sheet, SheetClose, SheetContent, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Loader2, Play, Settings, Upload } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Play, Settings, Upload, Loader2, X } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetClose } from "@/components/ui/sheet";
 
 export default function ChartsPage(){
   const [loading, setLoading] = useState(true);
@@ -19,6 +22,8 @@ export default function ChartsPage(){
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<{ open: boolean; message: string; variant: "info"|"success"|"error"; loading?: boolean }>({ open: false, message: "", variant: "info" });
   const toastTimer = useRef<number | null>(null);
+  const toastRef = useRef<HTMLDivElement | null>(null);
+  const [toastOffset, setToastOffset] = useState(0);
 
   function showToast(message: string, opts?: { variant?: "info"|"success"|"error"; loading?: boolean; durationMs?: number }){
     // clear any prior auto-hide timer
@@ -54,6 +59,24 @@ export default function ChartsPage(){
   fetch("/api/playlists").then(r=>r.json()).then((j)=>{ if (Array.isArray(j.playlists)) setPlaylists(j.playlists); }).catch(()=>{});
   }, []);
 
+  // Keep layout offset equal to toast height while toast is visible
+  useEffect(() => {
+    function refreshOffset(){
+      const el = toastRef.current;
+      setToastOffset(toast.open && el ? el.offsetHeight : 0);
+    }
+    refreshOffset();
+    if (!toast.open) return;
+    const observer = new ResizeObserver(() => refreshOffset());
+    if (toastRef.current) observer.observe(toastRef.current);
+    const onScrollOrResize = () => refreshOffset();
+    window.addEventListener('resize', onScrollOrResize);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', onScrollOrResize);
+    };
+  }, [toast.open]);
+
   async function syncNow(override?: { playlistId?: string; playlistName?: string }){
     setBusy(true);
     showToast('Syncing…', { variant: 'info', loading: true });
@@ -77,15 +100,18 @@ export default function ChartsPage(){
   }
 
   return (
-    <section className={`p-4 space-y-4 ${toast.open ? 'pt-16' : ''}`} aria-labelledby="title">
-  <h1 id="title" className="text-2xl font-bold text-center pb-4">Weekly Top 50</h1>
+    <section className={`p-4 space-y-4 pt-16`} aria-labelledby="title">
+      {toast.open && <div style={{ height: toastOffset }} aria-hidden="true" />}
+  <h1 id="title" className="text-2xl md:text-3xl font-bold text-center pb-4 text-[hsl(var(--secondary-foreground))]">Weekly Top 50</h1>
 
       {/* Header with cover, centered name, circular actions on right */}
-      <div className="flex flex-col items-center gap-4">
+  <div className="flex flex-col items-center gap-4 min-h-[18rem]">
         {loading ? (
           <>
-            <div className="w-60 aspect-square rounded-md overflow-hidden border bg-muted/30 animate-pulse" aria-hidden />
-            <div className="h-5 w-48 bg-muted/30 rounded animate-pulse" aria-hidden />
+            <div className="w-60 aspect-square rounded-md overflow-hidden skeleton" aria-hidden />
+            <div className="h-8 w-full flex items-center justify-center" aria-hidden>
+              <div className="h-8 w-48 rounded skeleton" />
+            </div>
           </>
         ) : (
           <>
@@ -95,22 +121,27 @@ export default function ChartsPage(){
               role="img"
               style={data?.target?.imageUrl ? { backgroundImage: `url(${data.target.imageUrl})` } : undefined}
             />
-            <div className="flex-1 text-center">
-              <div className="text-lg font-semibold truncate">{data?.target?.name ?? (targetType === 'new' ? targetName : '—')}</div>
+            <div className="h-8 w-full flex items-center justify-center text-center">
+              <h2 className="text-xl font-bold truncate text-[hsl(var(--primary))]">{data?.target?.name ?? (targetType === 'new' ? targetName : '—')}</h2>
             </div>
           </>
         )}
-        <div className="flex items-center gap-3 mt-6">
+  <div className="flex items-center gap-3 mt-6 mb-6 min-h-[3.5rem]">
           <Button variant="secondary" size="icon" className="rounded-full w-12 h-12" onClick={() => syncNow()} disabled={busy} aria-label="Sync">
             <Upload className="w-6 h-6" aria-hidden="true" />
           </Button>
-          <Sheet open={sheetOpen} onOpenChange={(o)=>{ setSheetOpen(o); if (o) setTimeout(()=>{ const el = document.querySelector('[role="dialog"]'); if (el) el.scrollTop = 0; }, 0); }}>
+      <Sheet open={sheetOpen} onOpenChange={(o)=>{ setSheetOpen(o); if (o) setTimeout(()=>{ const el = document.querySelector('[role=\"dialog\"]'); if (el) el.scrollTop = 0; }, 0); }}>
             <SheetTrigger asChild>
-              <Button variant="outline" size="icon" className="rounded-full w-12 h-12" aria-label="Edit destination">
+        <Button variant="secondary" size="icon" className="rounded-full w-12 h-12" aria-label="Edit destination">
                 <Settings className="w-6 h-6" aria-hidden="true" />
               </Button>
             </SheetTrigger>
             <SheetContent>
+              <SheetClose asChild>
+                <Button variant="ghost" size="icon" className="absolute right-4 top-4" aria-label="Close">
+                  <X className="w-4 h-4" />
+                </Button>
+              </SheetClose>
               <SheetHeader>
                 <SheetTitle>Choose the destination playlist</SheetTitle>
               </SheetHeader>
@@ -131,7 +162,9 @@ export default function ChartsPage(){
                     aria-label={`Use ${p.name}`}
                     title={p.name}
                   >
-                    <span className="absolute inset-x-0 bottom-0 bg-black/50 text-white text-xs truncate px-1 py-0.5">{p.name}</span>
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-b from-transparent to-black/60 text-white text-xs px-1 pt-6 pb-1.5">
+                      <span className="block truncate">{p.name}</span>
+                    </div>
                   </button>
                 ))}
               </div>
@@ -188,10 +221,10 @@ export default function ChartsPage(){
           {Array.from({ length: 10 }).map((_, i) => (
             <li key={i}>
               <div className="flex items-center gap-3 py-1">
-                <div className="w-12 aspect-square flex-shrink-0 rounded-sm bg-muted/30 border animate-pulse" />
+                <div className="w-12 aspect-square flex-shrink-0 rounded-sm skeleton" />
                 <div className="min-w-0 flex-1 space-y-2">
-                  <div className="h-4 w-2/3 bg-muted/30 rounded animate-pulse" />
-                  <div className="h-3 w-1/2 bg-muted/20 rounded animate-pulse" />
+                  <div className="h-4 w-2/3 rounded skeleton" />
+                  <div className="h-3 w-1/2 rounded skeleton" />
                 </div>
               </div>
             </li>
@@ -210,11 +243,11 @@ export default function ChartsPage(){
             else if (!isObj && typeof t === 'string' && t.startsWith('spotify:track:')) id = t.split(':')[2] ?? null;
             return (
               <li key={i} className="">
-                <a href={id ? `/tracks/${id}` : '#'} className="flex items-center gap-3 py-1 hover:bg-accent/30 rounded">
+                <a href={id ? `/tracks/${id}` : '#'} className="flex items-center gap-3 py-1 hover:bg-accent/30 rounded link-reset">
                   <div className="w-12 aspect-square flex-shrink-0 rounded-sm bg-muted/30 bg-center bg-cover" style={img ? { backgroundImage: `url(${img})` } : undefined} aria-hidden="true" />
                   <div className="min-w-0">
-                    <div className="text-sm font-medium truncate">{title}</div>
-                    <div className="text-xs text-muted-foreground truncate">{artist}</div>
+                    <div className="text-sm font-bold truncate">{title}</div>
+                    <div className="text-xs truncate">{artist}</div>
                   </div>
                 </a>
               </li>
@@ -226,6 +259,7 @@ export default function ChartsPage(){
       {toast.open && (
         <div
           className={`fixed top-0 inset-x-0 z-[60] px-4 py-2 shadow-md border-b text-sm text-white text-center ${toast.variant === 'success' ? 'bg-emerald-600' : toast.variant === 'error' ? 'bg-red-600' : 'bg-neutral-900/90'}`}
+          ref={toastRef}
           role={toast.variant === 'info' && toast.loading ? 'status' : 'alert'}
           aria-live={toast.variant === 'info' && toast.loading ? 'polite' : 'assertive'}
         >
