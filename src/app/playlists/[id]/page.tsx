@@ -103,13 +103,7 @@ export default function PlaylistDetailPage(){
           <ArrowLeft className="w-6 h-6" />
         </Button>
       </div>
-      <h1 id="title" className="text-2xl md:text-3xl font-bold text-center pb-4 text-[hsl(var(--secondary-foreground))]">
-        {loading ? (
-          <span className="inline-block h-7 w-48 rounded skeleton align-middle" aria-hidden />
-        ) : (
-          meta?.name || '—'
-        )}
-      </h1>
+  {/* Title moved below cover as H2 */}
 
       <div className="flex flex-col items-center gap-4 min-h-[18rem]">
         {loading ? (
@@ -121,6 +115,13 @@ export default function PlaylistDetailPage(){
             aria-label="Playlist cover"
           />
         )}
+        <div className="h-8 w-full flex items-center justify-center text-center">
+          {loading ? (
+            <div className="h-6 w-48 rounded skeleton" aria-hidden />
+          ) : (
+            <h2 className="text-xl font-bold truncate text-[hsl(var(--primary))]">{meta?.name || '—'}</h2>
+          )}
+        </div>
         <div className="flex items-center gap-3 mt-6 mb-6 min-h-[3.5rem]">
           <Button variant="secondary" size="icon" className="rounded-full w-12 h-12" onClick={()=>setConfirmOpen(true)} aria-label="Shuffle" disabled={busy}>
             <Shuffle className="w-6 h-6" aria-hidden="true" />
