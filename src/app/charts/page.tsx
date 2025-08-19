@@ -1,14 +1,11 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Play, Settings, Upload, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetClose } from "@/components/ui/sheet";
+import { Sheet, SheetClose, SheetContent, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Loader2, Play, Settings, Upload } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
-export default function MagicPage(){
+export default function ChartsPage(){
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<{tracks: Array<string | { id: string; name: string; artists: string[]; albumImageUrl: string | null }>, updatedAt: string|null, target?: { id: string|null; name: string|null; imageUrl?: string|null; externalUrl?: string|null }}>({tracks: [], updatedAt: null});
   const [playlists, setPlaylists] = useState<Array<{id:string; name:string; imageUrl?: string|null}>>([]);
@@ -40,7 +37,7 @@ export default function MagicPage(){
   }
   async function saveTarget(target: { playlistId?: string; playlistName?: string }){
     try{
-      const res = await fetch('/api/magic/top50/target', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(target) });
+      const res = await fetch('/api/charts/top50/target', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(target) });
       if(res.ok){
         const j = await res.json();
         if(j?.target){ setData(d => ({ ...d, target: j.target })); }
@@ -49,7 +46,7 @@ export default function MagicPage(){
   }
 
   useEffect(() => {
-  fetch("/api/magic/top50").then(r=>r.json()).then((j)=>{
+  fetch("/api/charts/top50").then(r=>r.json()).then((j)=>{
       setData(j);
       if (j?.target?.id) { setTargetType("existing"); setTargetPlaylistId(j.target.id); }
       else if (j?.target?.name) { setTargetType("new"); setTargetName(j.target.name); }
@@ -68,7 +65,7 @@ export default function MagicPage(){
       if (targetType === "new") body.playlistName = (targetName || "").trim() || "Chartilly Top of the Week";
     }
     body.savePreference = true;
-    const res = await fetch('/api/magic/top50/sync', {method:'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)});
+  const res = await fetch('/api/charts/top50/sync', {method:'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)});
     if (res.ok) {
       showToast('Sync completed', { variant: 'success' });
     } else {
@@ -93,7 +90,7 @@ export default function MagicPage(){
         ) : (
           <>
             <div
-              className="w-60 aspect-square rounded-md overflow-hidden border bg-muted/30 bg-center bg-cover"
+              className="w-60 aspect-square rounded-md overflow-hidden bg-muted/30 bg-center bg-cover"
               aria-label="Playlist cover"
               role="img"
               style={data?.target?.imageUrl ? { backgroundImage: `url(${data.target.imageUrl})` } : undefined}
@@ -128,10 +125,10 @@ export default function MagicPage(){
         {playlists.map(p => (
                   <button
                     key={p.id}
-                    className="w-full aspect-square rounded-md overflow-hidden border bg-muted/30 bg-center bg-cover relative"
+                    className="w-full aspect-square rounded-md overflow-hidden bg-muted/30 bg-center bg-cover relative"
                     style={p.imageUrl ? { backgroundImage: `url(${p.imageUrl})` } : undefined}
     onClick={async () => { setTargetType("existing"); setTargetPlaylistId(p.id); setData(d => ({...d, target: { id: p.id, name: p.name, imageUrl: p.imageUrl ?? null, externalUrl: d?.target?.externalUrl ?? null }})); await saveTarget({ playlistId: p.id }); setSheetOpen(false); setConfirmOverride({ playlistId: p.id, playlistName: p.name }); setConfirmOpen(true); }}
-                    aria-label={`Usar ${p.name}`}
+                    aria-label={`Use ${p.name}`}
                     title={p.name}
                   >
                     <span className="absolute inset-x-0 bottom-0 bg-black/50 text-white text-xs truncate px-1 py-0.5">{p.name}</span>
@@ -214,7 +211,7 @@ export default function MagicPage(){
             return (
               <li key={i} className="">
                 <a href={id ? `/tracks/${id}` : '#'} className="flex items-center gap-3 py-1 hover:bg-accent/30 rounded">
-                  <div className="w-12 aspect-square flex-shrink-0 rounded-sm bg-muted/30 bg-center bg-cover border" style={img ? { backgroundImage: `url(${img})` } : undefined} aria-hidden="true" />
+                  <div className="w-12 aspect-square flex-shrink-0 rounded-sm bg-muted/30 bg-center bg-cover" style={img ? { backgroundImage: `url(${img})` } : undefined} aria-hidden="true" />
                   <div className="min-w-0">
                     <div className="text-sm font-medium truncate">{title}</div>
                     <div className="text-xs text-muted-foreground truncate">{artist}</div>

@@ -37,14 +37,14 @@ create table if not exists public.shuffle_versions (
 create index if not exists idx_shuffle_playlist on public.shuffle_versions(playlist_id);
 create index if not exists idx_shuffle_created_at on public.shuffle_versions(created_at);
 
--- Magic Top 50 snapshot per user
-create table if not exists public.magic_top50 (
+-- Charts Top 50 snapshot per user
+create table if not exists public.charts_top50 (
   user_id uuid primary key,
   track_ids text[] not null,
   generated_at timestamptz not null default now(),
-  constraint fk_magic_user foreign key (user_id) references public.users(user_id) on delete cascade
+  constraint fk_charts_user foreign key (user_id) references public.users(user_id) on delete cascade
 );
-create index if not exists idx_magic_generated_at on public.magic_top50(generated_at);
+create index if not exists idx_charts_generated_at on public.charts_top50(generated_at);
 
 -- Event log
 create table if not exists public.events (

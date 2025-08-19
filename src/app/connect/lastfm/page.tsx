@@ -3,7 +3,7 @@ import React from "react";
 
 export default function ConnectLastFm(){
   function start(){
-  const next = new URLSearchParams({ next: "/magic" }).toString();
+  const next = new URLSearchParams({ next: "/charts" }).toString();
     window.location.href = `/api/auth/lastfm/start?${next}`;
   }
   return (

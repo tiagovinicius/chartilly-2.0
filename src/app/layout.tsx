@@ -28,7 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           style={{ backgroundColor: "hsl(var(--background))" }}
         >
           <Link href="/playlists" className="flex-1 rounded-md border px-3 py-2 text-center">Your playlists</Link>
-          <Link href="/magic" className="flex-1 rounded-md border px-3 py-2 text-center">Charts</Link>
+          <Link href="/charts" className="flex-1 rounded-md border px-3 py-2 text-center">Charts</Link>
         </nav>
       </body>
     </html>

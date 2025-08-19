@@ -29,8 +29,8 @@ On merge to `main`, GitHub Actions logs in to Supabase and runs `supabase db pus
 - GET `/api/playlists`
 - POST `/api/playlists/:id/shuffle`
 - POST `/api/playlists/:id/rollback`
-- GET `/api/magic/top50`
-- POST `/api/magic/top50/sync`
+- GET `/api/charts/top50`
+- POST `/api/charts/top50/sync`
 - POST `/api/auth/spotify`
 - POST `/api/auth/lastfm`
 

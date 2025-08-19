@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
   if (!user?.user_id) return Response.json({ tracks: [], updatedAt: null }, { status: 200 });
 
   const { data: snap } = await supabase
-    .from("magic_top50")
+    .from("charts_top50")
     .select("track_ids, generated_at")
     .eq("user_id", user.user_id)
     .single();

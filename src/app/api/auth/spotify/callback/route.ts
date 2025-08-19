@@ -6,8 +6,8 @@ export async function GET(req: NextRequest){
   const url = new URL(req.url);
   const code = url.searchParams.get("code");
   const origin = req.nextUrl.origin;
-  const nextParam = url.searchParams.get("next") || "/playlists";
-  const nextPath = nextParam.startsWith("/") ? nextParam : "/playlists";
+  const nextParam = url.searchParams.get("next") || "/charts";
+  const nextPath = nextParam.startsWith("/") ? nextParam : "/charts";
   if (!code) return NextResponse.redirect(new URL("/login?error=missing_code", origin));
 
   const clientId = process.env.SPOTIFY_CLIENT_ID!;
@@ -18,24 +18,43 @@ export async function GET(req: NextRequest){
     const token = await SpotifyAPI.exchangeCodeForToken(code, redirectUri, clientId, clientSecret);
     const profile = await SpotifyAPI.getCurrentUserProfile(token);
 
-    // upsert user in Supabase
-    const { data: upserted, error } = await supabaseAdmin
+    // Get or create user without changing primary key if exists
+    const { data: existing, error: selErr } = await supabaseAdmin
       .from("users")
-      .upsert({
-        user_id: crypto.randomUUID(),
-        email: profile.email ?? null,
-        spotify_access_token: token.access_token,
-        spotify_refresh_token: token.refresh_token ?? null,
-        spotify_user_id: profile.id,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: "spotify_user_id" })
       .select("user_id, spotify_user_id")
+      .eq("spotify_user_id", profile.id)
       .single();
-    if (error) throw error;
+    if (selErr && selErr.code !== "PGRST116") throw selErr; // ignore no rows
+
+    let spotifyUserId = profile.id;
+    if (existing?.user_id) {
+      const { error: updErr } = await supabaseAdmin
+        .from("users")
+        .update({
+          email: profile.email ?? null,
+          spotify_access_token: token.access_token,
+          spotify_refresh_token: token.refresh_token ?? null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("user_id", existing.user_id);
+      if (updErr) throw updErr;
+    } else {
+      const { error: insErr } = await supabaseAdmin
+        .from("users")
+        .insert({
+          user_id: crypto.randomUUID(),
+          email: profile.email ?? null,
+          spotify_access_token: token.access_token,
+          spotify_refresh_token: token.refresh_token ?? null,
+          spotify_user_id: profile.id,
+          updated_at: new Date().toISOString(),
+        });
+      if (insErr) throw insErr;
+    }
 
     // simple session cookie: spotify_user_id; in real app use proper session
     const res = NextResponse.redirect(new URL(nextPath, origin));
-    res.cookies.set("session", upserted.spotify_user_id, { httpOnly: false, path: "/", maxAge: 60*60*24*7 });
+    res.cookies.set("session", spotifyUserId, { httpOnly: false, path: "/", maxAge: 60*60*24*7 });
     return res;
   } catch (e: any) {
     return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(e.message ?? "auth_failed")}`, origin));
