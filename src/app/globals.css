@@ -83,3 +83,8 @@ a:hover{text-decoration:underline}
 @media (prefers-reduced-motion: reduce){
   *{animation:none!important;transition:none!important}
 }
+
+/* Form controls theme */
+input[type="checkbox"]{
+  accent-color: hsl(var(--primary));
+}

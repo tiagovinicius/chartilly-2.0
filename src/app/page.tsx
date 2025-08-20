@@ -29,7 +29,7 @@ export default async function Home() {
       <div className="text-center mb-8">
         <div className={pacifico.className} style={{
           color: "hsl(var(--primary))",
-          fontSize: "clamp(42px, 10vw, 96px)",
+          fontSize: "clamp(48px, 11vw, 108px)",
           fontWeight: 900,
           letterSpacing: "normal",
           lineHeight: 1,
