@@ -1,12 +1,12 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Pacifico } from "next/font/google";
 
 const pacifico = Pacifico({ subsets: ["latin"], weight: "400", display: "swap" });
 
-export default function OnboardingPage(){
+function OnboardingInner(){
   const sp = useSearchParams();
   const router = useRouter();
   const next = sp?.get("next") || "/playlists";
@@ -29,5 +29,13 @@ export default function OnboardingPage(){
         }}>Continue</Button>
       </div>
     </main>
+  );
+}
+
+export default function OnboardingPage(){
+  return (
+    <Suspense fallback={<main style={{padding:16}}><div className="skeleton h-8 w-40" aria-hidden /><div className="mt-4 skeleton h-20 w-full" aria-hidden /></main>}>
+      <OnboardingInner />
+    </Suspense>
   );
 }
