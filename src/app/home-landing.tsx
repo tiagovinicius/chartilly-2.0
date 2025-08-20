@@ -32,7 +32,7 @@ export default function HomeLanding() {
     <div>
   <h1 className="text-2xl md:text-3xl font-bold mb-3">Charts</h1>
   <h2 className="text-xl font-bold mb-2">Weekly Top 50</h2>
-      <a href="/charts" className="inline-block">
+  <a href={loading ? "#" : (targetImage ? "/charts" : "/charts/select")} className="inline-block">
         {loading ? (
           <div className="w-56 aspect-square rounded-md overflow-hidden skeleton" aria-hidden />
         ) : targetImage ? (

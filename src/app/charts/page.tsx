@@ -51,14 +51,40 @@ export default function ChartsPage(){
     }catch{}
   }
 
+  async function refreshCharts(){
+    try{
+      const r = await fetch('/api/charts/top50', { cache: 'no-store' });
+      if (r.ok) {
+        const j = await r.json();
+        setData(j);
+        if (j?.target?.id) { setTargetType('existing'); setTargetPlaylistId(j.target.id); }
+        else if (j?.target?.name) { setTargetType('new'); setTargetName(j.target.name); }
+      }
+    }catch{}
+  }
+
+  function removeConfirmFlag(){
+    try{
+      const url = new URL(window.location.href);
+      if (url.searchParams.has('confirm')){
+        url.searchParams.delete('confirm');
+        const qs = url.searchParams.toString();
+        const next = url.pathname + (qs ? `?${qs}` : '') + url.hash;
+        window.history.replaceState({}, '', next || '/charts');
+      }
+    }catch{}
+  }
+
   useEffect(() => {
   fetch("/api/charts/top50").then(r=>r.json()).then((j)=>{
       setData(j);
       if (j?.target?.id) { setTargetType("existing"); setTargetPlaylistId(j.target.id); }
       else if (j?.target?.name) { setTargetType("new"); setTargetName(j.target.name); }
-  // If no target configured, force open the destination sheet and prevent closing
+  // If no target configured, redirect to selection page
   const hasTarget = !!(j?.target?.id || j?.target?.name);
-  if (!hasTarget) { setSheetOpen(true); setForceSheet(true); }
+  if (!hasTarget) { window.location.href = '/charts/select'; return; }
+  // If coming from selection flow with confirm flag, open confirm sheet
+  try { const params = new URLSearchParams(window.location.search); if (params.get('confirm')) setConfirmOpen(true); } catch {}
     }).finally(()=>setLoading(false));
   fetch("/api/playlists").then(r=>r.json()).then((j)=>{ if (Array.isArray(j.playlists)) setPlaylists(j.playlists); }).catch(()=>{});
   }, []);
@@ -95,6 +121,9 @@ export default function ChartsPage(){
   const res = await fetch('/api/charts/top50/sync', {method:'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)});
     if (res.ok) {
       showToast('Sync completed', { variant: 'success' });
+  // Refresh page data and ensure confirm flag is removed so it won't reopen
+  await refreshCharts();
+  removeConfirmFlag();
     } else {
       let msg = 'Sync failed';
       try { const j = await res.json(); if (j?.error) msg = `Sync failed: ${j.error}`; } catch {}
@@ -216,7 +245,7 @@ export default function ChartsPage(){
                   <Button variant="ghost" size="lg">Cancel</Button>
                 </SheetClose>
                 <SheetClose asChild>
-                  <Button size="lg" disabled={busy} onClick={async ()=>{ if (confirmOverride) { await syncNow(confirmOverride); setConfirmOverride(null); } }}>Sync now</Button>
+                  <Button size="lg" disabled={busy} onClick={async ()=>{ await syncNow(confirmOverride || undefined); setConfirmOverride(null); }}>Sync now</Button>
                 </SheetClose>
               </SheetFooter>
             </SheetContent>
