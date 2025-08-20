@@ -16,6 +16,7 @@ export default function ChartsPage(){
   const [targetPlaylistId, setTargetPlaylistId] = useState<string>("");
   const [targetName, setTargetName] = useState<string>("Chartilly Top of the Week");
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [forceSheet, setForceSheet] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmOverride, setConfirmOverride] = useState<{ playlistId?: string; playlistName?: string }|null>(null);
@@ -55,6 +56,9 @@ export default function ChartsPage(){
       setData(j);
       if (j?.target?.id) { setTargetType("existing"); setTargetPlaylistId(j.target.id); }
       else if (j?.target?.name) { setTargetType("new"); setTargetName(j.target.name); }
+  // If no target configured, force open the destination sheet and prevent closing
+  const hasTarget = !!(j?.target?.id || j?.target?.name);
+  if (!hasTarget) { setSheetOpen(true); setForceSheet(true); }
     }).finally(()=>setLoading(false));
   fetch("/api/playlists").then(r=>r.json()).then((j)=>{ if (Array.isArray(j.playlists)) setPlaylists(j.playlists); }).catch(()=>{});
   }, []);
@@ -130,18 +134,29 @@ export default function ChartsPage(){
           <Button variant="secondary" size="icon" className="rounded-full w-12 h-12" onClick={() => syncNow()} disabled={busy} aria-label="Sync">
             <Upload className="w-6 h-6" aria-hidden="true" />
           </Button>
-      <Sheet open={sheetOpen} onOpenChange={(o)=>{ setSheetOpen(o); if (o) setTimeout(()=>{ const el = document.querySelector('[role=\"dialog\"]'); if (el) el.scrollTop = 0; }, 0); }}>
+      <Sheet open={sheetOpen} onOpenChange={(o)=>{
+            // Block closing when forced (no target yet)
+            if (forceSheet && !o) { setSheetOpen(true); return; }
+            setSheetOpen(o);
+            if (o) setTimeout(()=>{ const el = document.querySelector('[role="dialog"]'); if (el) el.scrollTop = 0; }, 0);
+          }}>
             <SheetTrigger asChild>
         <Button variant="secondary" size="icon" className="rounded-full w-12 h-12" aria-label="Edit destination">
                 <Settings className="w-6 h-6" aria-hidden="true" />
               </Button>
             </SheetTrigger>
-            <SheetContent>
-              <SheetClose asChild>
-                <Button variant="ghost" size="icon" className="absolute right-4 top-4" aria-label="Close">
-                  <X className="w-4 h-4" />
-                </Button>
-              </SheetClose>
+            <SheetContent
+              // Prevent closing via overlay or ESC while forced
+              onInteractOutside={(e)=>{ if (forceSheet) e.preventDefault(); }}
+              onEscapeKeyDown={(e)=>{ if (forceSheet) e.preventDefault(); }}
+            >
+              {!forceSheet && (
+                <SheetClose asChild>
+                  <Button variant="ghost" size="icon" className="absolute right-4 top-4" aria-label="Close">
+                    <X className="w-4 h-4" />
+                  </Button>
+                </SheetClose>
+              )}
               <SheetHeader>
                 <SheetTitle>Choose the destination playlist</SheetTitle>
               </SheetHeader>
@@ -149,7 +164,7 @@ export default function ChartsPage(){
                 {/* Add tile */}
                 <button
                   className="w-full aspect-square rounded-md border border-dashed flex items-center justify-center text-sm hover:bg-accent/10"
-                  onClick={() => { setSheetOpen(false); setAddOpen(true); }}
+                  onClick={() => { setForceSheet(false); setSheetOpen(false); setAddOpen(true); }}
                 >
                   Add
                 </button>
@@ -158,7 +173,7 @@ export default function ChartsPage(){
                     key={p.id}
                     className="w-full aspect-square rounded-md overflow-hidden bg-muted/30 bg-center bg-cover relative"
                     style={p.imageUrl ? { backgroundImage: `url(${p.imageUrl})` } : undefined}
-    onClick={async () => { setTargetType("existing"); setTargetPlaylistId(p.id); setData(d => ({...d, target: { id: p.id, name: p.name, imageUrl: p.imageUrl ?? null, externalUrl: d?.target?.externalUrl ?? null }})); await saveTarget({ playlistId: p.id }); setSheetOpen(false); setConfirmOverride({ playlistId: p.id, playlistName: p.name }); setConfirmOpen(true); }}
+    onClick={async () => { setTargetType("existing"); setTargetPlaylistId(p.id); setData(d => ({...d, target: { id: p.id, name: p.name, imageUrl: p.imageUrl ?? null, externalUrl: d?.target?.externalUrl ?? null }})); await saveTarget({ playlistId: p.id }); setForceSheet(false); setSheetOpen(false); setConfirmOverride({ playlistId: p.id, playlistName: p.name }); setConfirmOpen(true); }}
                     aria-label={`Use ${p.name}`}
                     title={p.name}
                   >
@@ -183,7 +198,7 @@ export default function ChartsPage(){
   <Button variant="ghost" size="lg">Cancel</Button>
                   </SheetClose>
                   <SheetClose asChild>
-  <Button size="lg" onClick={async ()=>{ setTargetType("new"); const name = (targetName || '').trim() || 'Chartilly Top of the Week'; await saveTarget({ playlistName: name }); setSheetOpen(false); setConfirmOverride({ playlistName: name }); setConfirmOpen(true); }}>Confirm</Button>
+  <Button size="lg" onClick={async ()=>{ setTargetType("new"); const name = (targetName || '').trim() || 'Chartilly Top of the Week'; await saveTarget({ playlistName: name }); setForceSheet(false); setSheetOpen(false); setConfirmOverride({ playlistName: name }); setConfirmOpen(true); }}>Confirm</Button>
                   </SheetClose>
                 </SheetFooter>
               </div>
