@@ -9,9 +9,10 @@ export default function BottomNav() {
   const isPlaylists = pathname.startsWith("/playlists");
   const isCharts = pathname.startsWith("/charts");
   const isOnboarding = pathname.startsWith("/onboarding");
+  const isLogin = pathname.startsWith("/login");
 
   // Hide bottom navigation on onboarding flow
-  if (isOnboarding) return null;
+  if (isOnboarding || isLogin) return null;
 
   const bgStyle: React.CSSProperties = {
     backgroundColor: "hsl(var(--secondary))",
