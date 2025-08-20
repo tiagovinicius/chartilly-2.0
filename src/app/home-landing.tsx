@@ -64,16 +64,16 @@ export default function HomeLanding() {
         ) : topNine.length > 0 ? (
           topNine.map((p) => (
             <div key={p.id}>
-              <div
-                className="w-full aspect-square rounded-md overflow-hidden bg-muted/30 bg-center bg-cover relative"
-                style={p.imageUrl ? { backgroundImage: `url(${p.imageUrl})` } : undefined}
-                aria-label={p.name}
-                title={p.name}
-              >
-                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-b from-transparent to-black/60 text-white text-xs px-1 pt-6 pb-1.5">
-                  <span className="block truncate">{p.name}</span>
+              <a href={`/playlists/${p.id}`} className="block link-reset" aria-label={p.name} title={p.name}>
+                <div
+                  className="w-full aspect-square rounded-md overflow-hidden bg-muted/30 bg-center bg-cover relative"
+                  style={p.imageUrl ? { backgroundImage: `url(${p.imageUrl})` } : undefined}
+                >
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-b from-transparent to-black/60 text-white text-xs px-1 pt-6 pb-1.5">
+                    <span className="block truncate">{p.name}</span>
+                  </div>
                 </div>
-              </div>
+              </a>
             </div>
           ))
         ) : (
