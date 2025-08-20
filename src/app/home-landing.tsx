@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { Plus } from "lucide-react";
 
 type Playlist = { id: string; name: string; tracksTotal: number; imageUrl: string | null };
 
@@ -34,15 +35,27 @@ export default function HomeLanding() {
       <a href="/charts" className="inline-block">
         {loading ? (
           <div className="w-56 aspect-square rounded-md overflow-hidden skeleton" aria-hidden />
-        ) : (
+        ) : targetImage ? (
           <div
             className="w-56 aspect-square rounded-md overflow-hidden bg-muted/30 bg-center bg-cover relative"
-            style={targetImage ? { backgroundImage: `url(${targetImage})` } : undefined}
+            style={{ backgroundImage: `url(${targetImage})` }}
             aria-label="Target playlist cover"
             title={targetName ?? undefined}
           >
             <div className="absolute inset-x-0 bottom-0 bg-gradient-to-b from-transparent to-black/60 text-white text-xs px-1 pt-6 pb-1.5">
               <span className="block truncate">{targetName ?? '—'}</span>
+            </div>
+          </div>
+        ) : (
+          <div
+            className="w-56 aspect-square rounded-md border-4 border-dashed grid place-items-center text-center px-3"
+            style={{ borderColor: "hsl(var(--primary))", color: "hsl(var(--primary))" }}
+            aria-label="Choose the destination playlist"
+            title="Choose the destination playlist"
+          >
+            <div className="flex flex-col items-center gap-2">
+              <Plus className="w-8 h-8" aria-hidden="true" />
+              <span className="text-sm font-semibold">Choose the destination playlist</span>
             </div>
           </div>
         )}

@@ -163,7 +163,7 @@ export default function ChartsPage(){
               <div className="grid grid-cols-3 gap-3">
                 {/* Add tile */}
                 <button
-                  className="w-full aspect-square rounded-md border border-dashed flex items-center justify-center text-sm hover:bg-accent/10"
+                  className="w-full aspect-square rounded-md border-4 border-dashed flex items-center justify-center text-sm hover:bg-accent/10"
                   onClick={() => { setForceSheet(false); setSheetOpen(false); setAddOpen(true); }}
                 >
                   Add
