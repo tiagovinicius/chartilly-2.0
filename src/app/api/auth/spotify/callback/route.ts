@@ -6,8 +6,8 @@ export async function GET(req: NextRequest){
   const url = new URL(req.url);
   const code = url.searchParams.get("code");
   const origin = req.nextUrl.origin;
-  const nextParam = url.searchParams.get("next") || "/charts";
-  const nextPath = nextParam.startsWith("/") ? nextParam : "/charts";
+  const nextParam = url.searchParams.get("next") || "/";
+  const nextPath = nextParam.startsWith("/") ? nextParam : "/";
   if (!code) return NextResponse.redirect(new URL("/login?error=missing_code", origin));
 
   const clientId = process.env.SPOTIFY_CLIENT_ID!;
@@ -52,8 +52,18 @@ export async function GET(req: NextRequest){
       if (insErr) throw insErr;
     }
 
+    // Check if user already connected Last.fm
+    const { data: userRow } = await supabaseAdmin
+      .from("users")
+      .select("lastfm_session_key")
+      .eq("spotify_user_id", profile.id)
+      .single();
+
     // simple session cookie: spotify_user_id; in real app use proper session
-    const res = NextResponse.redirect(new URL(nextPath, origin));
+    const redirectUrl = userRow?.lastfm_session_key
+      ? new URL(nextPath, origin)
+      : new URL(`/connect/lastfm?next=${encodeURIComponent("/")}`, origin);
+    const res = NextResponse.redirect(redirectUrl);
     res.cookies.set("session", spotifyUserId, { httpOnly: false, path: "/", maxAge: 60*60*24*7 });
     return res;
   } catch (e: any) {

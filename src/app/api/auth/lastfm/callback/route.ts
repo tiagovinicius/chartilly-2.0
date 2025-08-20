@@ -8,8 +8,8 @@ export const runtime = "nodejs";
 export async function GET(req: NextRequest) {
   const origin = req.nextUrl.origin;
   const token = req.nextUrl.searchParams.get("token");
-  const nextParam = req.nextUrl.searchParams.get("next") || "/charts";
-  const nextPath = nextParam.startsWith("/") ? nextParam : "/charts";
+  const nextParam = req.nextUrl.searchParams.get("next") || "/";
+  const nextPath = nextParam.startsWith("/") ? nextParam : "/";
   if (!token) return NextResponse.redirect(new URL("/connect/lastfm?error=missing_token", origin));
 
   const apiKey = process.env.LASTFM_API_KEY!;

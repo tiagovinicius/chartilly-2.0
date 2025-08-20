@@ -7,7 +7,7 @@ const pacifico = Pacifico({ subsets: ["latin"], weight: "400", display: "swap" }
 
 export default function LoginPage(){
   return (
-    <section className="min-h-[calc(100vh-5rem)] grid place-items-center px-4">
+    <section className="min-h-screen grid place-items-center px-4">
       <div className="text-center space-y-8">
         <div className={pacifico.className} style={{
           color: "hsl(var(--primary))",

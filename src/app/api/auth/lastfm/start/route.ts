@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "missing_lastfm_api_key" }, { status: 500 });
   }
   const origin = req.nextUrl.origin;
-  const next = req.nextUrl.searchParams.get("next") || "/charts";
+  const next = req.nextUrl.searchParams.get("next") || "/";
   const cbEnv = process.env.LASTFM_REDIRECT_URI;
   const callbackUrl = cbEnv || `${origin}/api/auth/lastfm/callback`;
 
