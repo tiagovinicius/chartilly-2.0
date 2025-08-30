@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Play, Settings, Upload, Loader2, X, ChevronLeft } from "lucide-react";
+import { Play, Settings, Upload, Loader2, X, ChevronLeft, ChevronDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -12,15 +12,17 @@ import Link from "next/link";
 export default function ILoveMondaysPage(){
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<{tracks: Array<string | { id: string; name: string; artists: string[]; albumImageUrl: string | null }>, updatedAt: string|null, weekStartDate: string|null, target?: { id: string|null; name: string|null; imageUrl?: string|null; externalUrl?: string|null }}>({tracks: [], updatedAt: null, weekStartDate: null});
+  const [top50Data, setTop50Data] = useState<{target?: { id: string|null; name: string|null; imageUrl?: string|null; externalUrl?: string|null }}>({});
   const [playlists, setPlaylists] = useState<Array<{id:string; name:string; imageUrl?: string|null}>>([]);
   const [targetType, setTargetType] = useState<"existing"|"new">("existing");
   const [targetPlaylistId, setTargetPlaylistId] = useState<string>("");
-  const [targetName, setTargetName] = useState<string>("I Love Mondays");
+  const [targetName, setTargetName] = useState<string>("Chartilly I Love Mondays");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [forceSheet, setForceSheet] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmOverride, setConfirmOverride] = useState<{ playlistId?: string; playlistName?: string }|null>(null);
+  const [navigationOpen, setNavigationOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<{ open: boolean; message: string; variant: "info"|"success"|"error"; loading?: boolean }>({ open: false, message: "", variant: "info" });
   const toastTimer = useRef<number | null>(null);
@@ -42,7 +44,7 @@ export default function ILoveMondaysPage(){
       }, dur) as unknown as number;
     }
   }
-  
+
   async function saveTarget(target: { playlistId?: string; playlistName?: string }){
     try{
       const res = await fetch('/api/charts/ilovemondays/target', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(target) });
@@ -82,13 +84,15 @@ export default function ILoveMondaysPage(){
       setData(j);
       if (j?.target?.id) { setTargetType("existing"); setTargetPlaylistId(j.target.id); }
       else if (j?.target?.name) { setTargetType("new"); setTargetName(j.target.name); }
-      // If no target configured, force sheet open
+      // If no target configured, redirect to selection page
       const hasTarget = !!(j?.target?.id || j?.target?.name);
-      if (!hasTarget) { setForceSheet(true); setSheetOpen(true); }
+      if (!hasTarget) { window.location.href = '/charts/ilovemondays/select'; return; }
       // If coming from selection flow with confirm flag, open confirm sheet
       try { const params = new URLSearchParams(window.location.search); if (params.get('confirm')) setConfirmOpen(true); } catch {}
     }).finally(()=>setLoading(false));
     fetch("/api/playlists").then(r=>r.json()).then((j)=>{ if (Array.isArray(j.playlists)) setPlaylists(j.playlists); }).catch(()=>{});
+    // Fetch Top 50 data for navigation sheet
+    fetch("/api/charts/top50").then(r=>r.json()).then((j)=>{ setTop50Data(j || {}); }).catch(()=>{});
   }, []);
 
   // Keep layout offset equal to toast height while toast is visible
@@ -117,7 +121,7 @@ export default function ILoveMondaysPage(){
     else if (override?.playlistName) body.playlistName = override.playlistName;
     else {
       if (targetType === "existing" && targetPlaylistId) body.playlistId = targetPlaylistId;
-      if (targetType === "new") body.playlistName = (targetName || "").trim() || "I Love Mondays";
+      if (targetType === "new") body.playlistName = (targetName || "").trim() || "Chartilly I Love Mondays";
     }
     body.savePreference = true;
     const res = await fetch('/api/charts/ilovemondays/sync', {method:'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)});
@@ -136,34 +140,38 @@ export default function ILoveMondaysPage(){
 
   function formatWeekDescription(weekStartDate: string | null) {
     if (!weekStartDate) return "";
-    const startDate = new Date(weekStartDate);
-    const endDate = new Date(startDate);
-    endDate.setDate(startDate.getDate() + 6); // Sunday
-    
+
+    // Calculate the actual period based on I Love Mondays logic
     const now = new Date();
-    const isCurrentWeek = startDate <= now && now <= endDate;
-    
-    if (isCurrentWeek) {
-      return `Desde segunda-feira passada até ontem`;
-    } else {
-      return `${startDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} a ${endDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}`;
-    }
+    const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+
+    // Get last Monday's date (same logic as in lastfm-sdk.ts)
+    const lastMonday = new Date(now);
+    lastMonday.setDate(now.getDate() - daysFromMonday - 7);
+    lastMonday.setHours(0, 0, 0, 0);
+
+    // Calculate end date (yesterday)
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    yesterday.setHours(23, 59, 59, 999);
+
+    return `${lastMonday.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} a ${yesterday.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}`;
   }
 
   return (
     <section className={`p-4 space-y-4`} aria-labelledby="title">
       {toast.open && <div style={{ height: toastOffset }} aria-hidden="true" />}
-      
-      {/* Back button */}
-      <div className="flex items-center mb-4">
-        <Link href="/charts">
-          <Button variant="ghost" size="icon" className="mr-2">
-            <ChevronLeft className="w-5 h-5" />
-          </Button>
-        </Link>
-      </div>
 
-      <h1 id="title" className="mt-4 text-2xl md:text-3xl font-bold text-center pb-2 text-[hsl(var(--secondary-foreground))]">I Love Mondays</h1>
+      <button
+        onClick={() => setNavigationOpen(true)}
+        className="w-full mt-4 pb-4 text-[hsl(var(--secondary-foreground))] hover:text-[hsl(var(--foreground))] transition-colors flex items-center justify-center gap-2"
+      >
+        <span className="text-2xl md:text-3xl font-bold">I Love Mondays</span>
+        <div className="w-6 h-6 rounded border border-current flex items-center justify-center">
+          <ChevronDown className="w-3 h-3" />
+        </div>
+      </button>
       <p className="text-center text-sm text-muted-foreground pb-4">
         Top 100 músicas {formatWeekDescription(data.weekStartDate)}
       </p>
@@ -265,132 +273,173 @@ export default function ILoveMondaysPage(){
               )}
             </SheetContent>
           </Sheet>
+          <a href={data?.target?.externalUrl ?? '#'} target="_blank" rel="noreferrer" aria-label="Open in Spotify">
+            <Button variant="default" size="lg" className="rounded-full w-14 h-14 p-0">
+              <Play className="w-7 h-7" aria-hidden="true" />
+            </Button>
+          </a>
         </div>
       </div>
 
       {/* Tracks List */}
       {loading ? (
-        <div className="space-y-3">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-3 p-3 rounded-lg border skeleton-content" aria-hidden>
-              <div className="w-12 h-12 rounded skeleton" />
-              <div className="flex-1 space-y-2">
-                <div className="h-4 w-3/4 rounded skeleton" />
-                <div className="h-3 w-1/2 rounded skeleton" />
+        <ol className="space-y-3" aria-hidden="true">
+          {Array.from({ length: 10 }).map((_, i) => (
+            <li key={i}>
+              <div className="flex items-center gap-3 py-1">
+                <div className="w-12 aspect-square flex-shrink-0 rounded-sm skeleton" />
+                <div className="min-w-0 flex-1 space-y-2">
+                  <div className="h-4 w-2/3 rounded skeleton" />
+                  <div className="h-3 w-1/2 rounded skeleton" />
+                </div>
               </div>
-            </div>
+            </li>
           ))}
-        </div>
+        </ol>
       ) : data.tracks.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           <p>No tracks found. Try syncing to get your I Love Mondays chart!</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <ol className="space-y-3">
           {data.tracks.map((track, i) => {
-            if (typeof track === 'string') {
-              return (
-                <div key={i} className="flex items-center gap-3 p-3 rounded-lg border">
-                  <div className="w-12 h-12 rounded bg-muted/30 flex items-center justify-center">
-                    <span className="text-xs text-muted-foreground">#{i + 1}</span>
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium text-sm">{track}</p>
-                  </div>
-                </div>
-              );
-            }
+            const isObj = track && typeof track === 'object';
+            const title = isObj ? track.name : String(track);
+            const artist = isObj ? (Array.isArray(track.artists) ? track.artists.join(', ') : '') : '';
+            const img = isObj ? track.albumImageUrl : null;
+            // derive id: from enriched object id or from URI spotify:track:ID
+            let id: string | null = null;
+            if (isObj && track.id) id = track.id;
+            else if (!isObj && typeof track === 'string' && track.startsWith('spotify:track:')) id = track.split(':')[2] ?? null;
             return (
-              <div key={track.id} className="flex items-center gap-3 p-3 rounded-lg border hover:bg-accent/5">
-                <div className="relative">
-                  <div
-                    className="w-12 h-12 rounded bg-muted/30 bg-center bg-cover"
-                    style={track.albumImageUrl ? { backgroundImage: `url(${track.albumImageUrl})` } : undefined}
-                  />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-xs font-bold text-white drop-shadow-lg">#{i + 1}</span>
+              <li key={i} className="">
+                <a href={id ? `/tracks/${id}` : '#'} className="flex items-center gap-3 py-1 hover:bg-accent/30 rounded link-reset">
+                  <div className="w-12 aspect-square flex-shrink-0 rounded-sm bg-muted/30 bg-center bg-cover" style={img ? { backgroundImage: `url(${img})` } : undefined} aria-hidden="true" />
+                  <div className="min-w-0">
+                    <div className="text-sm font-bold truncate">{title}</div>
+                    <div className="text-xs truncate">{artist}</div>
                   </div>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm truncate">{track.name}</p>
-                  <p className="text-xs text-muted-foreground truncate">{track.artists.join(', ')}</p>
-                </div>
-              </div>
+                </a>
+              </li>
             );
           })}
-        </div>
+        </ol>
       )}
 
-      {/* Confirmation Dialog */}
-      {confirmOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setConfirmOpen(false)}>
-          <div className="bg-background p-6 rounded-lg max-w-sm w-full mx-4" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-semibold mb-4">Sync to this playlist?</h3>
-            <p className="text-sm text-muted-foreground mb-6">
-              This will replace all tracks in {confirmOverride?.playlistId ? "the selected playlist" : `"${confirmOverride?.playlistName}"`} with your current I Love Mondays top 100.
-            </p>
-            <div className="flex gap-3">
-              <Button variant="outline" onClick={() => setConfirmOpen(false)} className="flex-1">
-                Cancel
-              </Button>
-              <Button onClick={() => { setConfirmOpen(false); syncNow(confirmOverride ?? undefined); }} className="flex-1" disabled={busy}>
-                {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : "Sync"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Confirm sync sheet */}
+      <Sheet open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>Sync to this playlist?</SheetTitle>
+          </SheetHeader>
+          <p className="text-sm text-muted-foreground mb-3">
+            This will replace all tracks in {confirmOverride?.playlistId ? "the selected playlist" : `"${confirmOverride?.playlistName}"`} with your current I Love Mondays top 100.
+          </p>
+          <p className="text-sm text-muted-foreground mb-3">Destination: <span className="font-medium">{confirmOverride?.playlistName || data?.target?.name || '—'}</span></p>
+          <SheetFooter>
+            <SheetClose asChild>
+              <Button variant="ghost" size="lg">Cancel</Button>
+            </SheetClose>
+            <SheetClose asChild>
+              <Button size="lg" disabled={busy} onClick={async ()=>{ await syncNow(confirmOverride || undefined); setConfirmOverride(null); }}>Sync now</Button>
+            </SheetClose>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
 
-      {/* Add New Playlist Dialog */}
-      {addOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setAddOpen(false)}>
-          <div className="bg-background p-6 rounded-lg max-w-sm w-full mx-4" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-semibold mb-4">Create New Playlist</h3>
-            <div className="space-y-4 mb-6">
-              <div>
-                <Label htmlFor="new-playlist-name">Playlist Name</Label>
-                <Input
-                  id="new-playlist-name"
-                  value={targetName}
-                  onChange={(e) => setTargetName(e.target.value)}
-                  placeholder="I Love Mondays"
-                />
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <Button variant="outline" onClick={() => setAddOpen(false)} className="flex-1">
-                Cancel
-              </Button>
-              <Button
-                onClick={() => {
-                  setAddOpen(false);
-                  setTargetType("new");
-                  setConfirmOverride({ playlistName: targetName || "I Love Mondays" });
-                  setConfirmOpen(true);
-                }}
-                className="flex-1"
-              >
-                Create
-              </Button>
-            </div>
+      {/* Add new playlist sheet */}
+      <Sheet open={addOpen} onOpenChange={setAddOpen}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>New playlist name</SheetTitle>
+          </SheetHeader>
+          <div className="space-y-3">
+            <Input value={targetName} onChange={(e)=>setTargetName(e.target.value)} placeholder="Chartilly I Love Mondays" />
+            <SheetFooter>
+              <SheetClose asChild>
+                <Button variant="ghost" size="lg">Cancel</Button>
+              </SheetClose>
+              <SheetClose asChild>
+                <Button size="lg" onClick={async ()=>{ const name = (targetName || '').trim() || 'Chartilly I Love Mondays'; setTargetType("new"); setConfirmOverride({ playlistName: name }); setAddOpen(false); setConfirmOpen(true); }}>Confirm</Button>
+              </SheetClose>
+            </SheetFooter>
           </div>
-        </div>
-      )}
+        </SheetContent>
+      </Sheet>
 
       {/* Toast */}
       {toast.open && (
         <div
+          className={`fixed top-0 inset-x-0 z-[60] px-4 py-2 shadow-md border-b text-sm text-white text-center ${toast.variant === 'success' ? 'bg-emerald-600' : toast.variant === 'error' ? 'bg-red-600' : 'bg-neutral-900/90'}`}
           ref={toastRef}
-          className={`fixed top-4 left-1/2 -translate-x-1/2 z-40 px-4 py-3 rounded-lg text-sm font-medium flex items-center gap-2 ${
-            toast.variant === 'success' ? 'bg-green-600 text-white' :
-            toast.variant === 'error' ? 'bg-red-600 text-white' :
-            'bg-blue-600 text-white'
-          }`}
+          role={toast.variant === 'info' && toast.loading ? 'status' : 'alert'}
+          aria-live={toast.variant === 'info' && toast.loading ? 'polite' : 'assertive'}
         >
-          {toast.loading && <Loader2 className="w-4 h-4 animate-spin" />}
-          {toast.message}
+          <div className="flex items-center justify-center gap-2">
+            {toast.loading && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
+            <span>{toast.message}</span>
+          </div>
         </div>
       )}
+
+      {/* Navigation Sheet */}
+      <Sheet open={navigationOpen} onOpenChange={setNavigationOpen}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>Charts</SheetTitle>
+          </SheetHeader>
+          <div className="py-4 space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <a
+                href="/charts"
+                className="flex flex-col items-center hover:bg-accent/5 transition-colors rounded-lg"
+                onClick={() => setNavigationOpen(false)}
+              >
+                <div
+                  className="w-full aspect-square rounded-md overflow-hidden bg-muted/30 bg-center bg-cover relative"
+                  style={top50Data?.target?.imageUrl ? { backgroundImage: `url(${top50Data.target.imageUrl})` } : undefined}
+                >
+                  {top50Data?.target?.imageUrl && (
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-b from-transparent to-black/60 text-white text-xs px-1 pt-6 pb-1.5">
+                      <span className="block truncate">{top50Data?.target?.name ?? 'Weekly Top 50'}</span>
+                    </div>
+                  )}
+                  {!top50Data?.target?.imageUrl && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-lg">🏆</span>
+                    </div>
+                  )}
+                </div>
+                <p className="font-medium text-sm mt-2 text-center">Weekly Top 50</p>
+                <p className="text-xs text-muted-foreground text-center">Your 50 most played songs of the week</p>
+              </a>
+
+              <a
+                href="/charts/ilovemondays"
+                className="flex flex-col items-center hover:bg-accent/5 transition-colors rounded-lg"
+                onClick={() => setNavigationOpen(false)}
+              >
+                <div
+                  className="w-full aspect-square rounded-md overflow-hidden bg-muted/30 bg-center bg-cover relative"
+                  style={data?.target?.imageUrl ? { backgroundImage: `url(${data.target.imageUrl})` } : undefined}
+                >
+                  {data?.target?.imageUrl ? (
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-b from-transparent to-black/60 text-white text-xs px-1 pt-6 pb-1.5">
+                      <span className="block truncate">{data?.target?.name ?? 'I Love Mondays'}</span>
+                    </div>
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-lg">💙</span>
+                    </div>
+                  )}
+                </div>
+                <p className="font-medium text-sm mt-2 text-center">I Love Mondays</p>
+                <p className="text-xs text-muted-foreground text-center">Top 100 songs since Monday</p>
+              </a>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
     </section>
   );
 }

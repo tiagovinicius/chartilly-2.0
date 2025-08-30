@@ -41,27 +41,27 @@ export async function performILoveMondaysSync(params: {
     targetPlaylistId = playlistId;
   } else {
     const provided = (playlistName ?? "").trim();
-    const name = provided.length > 0 ? provided : "I Love Mondays";
+    const name = provided.length > 0 ? provided : "Chartilly I Love Mondays";
     targetPlaylistId = await SpotifyAPI.getOrCreatePlaylistByName(
       token,
       ownerSpotifyId,
       name,
-      playlistDescription ?? "Top 100 músicas desde segunda-feira - Atualizado pelo Chartilly"
+      playlistDescription ?? "Top 100 songs since Monday - Updated by Chartilly"
     );
   }
 
-  await supabaseAdmin.from("charts_ilovemondays").upsert({ 
-    user_id: userId, 
-    track_ids: uris, 
+  await supabaseAdmin.from("charts_ilovemondays").upsert({
+    user_id: userId,
+    track_ids: uris,
     generated_at: new Date().toISOString(),
     week_start_date: weekStartDate
   });
   await SpotifyAPI.replacePlaylistTracks(token, targetPlaylistId, uris);
-  await supabaseAdmin.from("events").insert({ 
-    user_id: userId, 
-    event_type: "ilovemondays_sync", 
-    status: "ok", 
-    payload: { count: uris.length, telemetry: stats, targetPlaylistId, weekStartDate } 
+  await supabaseAdmin.from("events").insert({
+    user_id: userId,
+    event_type: "ilovemondays_sync",
+    status: "ok",
+    payload: { count: uris.length, telemetry: stats, targetPlaylistId, weekStartDate }
   });
 
   return { count: uris.length, playlistId: targetPlaylistId, telemetry: stats, weekStartDate };
