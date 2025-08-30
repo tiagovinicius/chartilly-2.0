@@ -27,10 +27,16 @@ export async function POST(req: NextRequest) {
     updates.top50_playlist_name = null;
   } else {
     updates.top50_playlist_id = null;
-    updates.top50_playlist_name = playlistName || "Chartilly Top of the Week";
+    updates.top50_playlist_name = playlistName || "Chartilly Weekly Top 100";
   }
 
-  await supabaseAdmin.from("users").update(updates).eq("user_id", user.user_id);
+  console.log('Updating user with:', updates);
+
+  const { error: updateError } = await supabaseAdmin.from("users").update(updates).eq("user_id", user.user_id);
+  if (updateError) {
+    console.error('Database update error:', updateError);
+    return Response.json({ ok: false, error: "update_failed", details: updateError.message }, { status: 500 });
+  }
 
   // Build target response, optionally enrich with meta
   let target: any = { id: updates.top50_playlist_id ?? null, name: updates.top50_playlist_name ?? null };

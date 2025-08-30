@@ -26,7 +26,7 @@ export default function ConnectLastFm(){
       <Sheet open>
         <SheetContent>
           <h1 className="text-xl font-bold mb-2">Connect Last.fm</h1>
-          <p className="text-sm text-muted-foreground">Connect your Last.fm account to enable the Weekly Top 50.</p>
+          <p className="text-sm text-muted-foreground">Connect your Last.fm account to enable the Weekly Top 100.</p>
           <div className="mt-4 flex justify-end">
             <Button size="lg" onClick={start}>Connect with Last.fm</Button>
           </div>

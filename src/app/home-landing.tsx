@@ -9,8 +9,8 @@ type ChartData = {
 
 export default function HomeLanding() {
   const [loading, setLoading] = useState(true);
-  // Weekly Top 50 data
-  const [top50Data, setTop50Data] = useState<ChartData>({});
+  // Weekly Top 100 data
+  const [top100Data, setTop100Data] = useState<ChartData>({});
   // I Love Mondays data
   const [ilovemondaysData, setIlovemondaysData] = useState<ChartData>({});
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
@@ -21,9 +21,9 @@ export default function HomeLanding() {
       fetch('/api/charts/top50', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null),
       fetch('/api/charts/ilovemondays', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null),
       fetch('/api/playlists', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null),
-    ]).then(([top50, ilovemondays, pls]) => {
+    ]).then(([top100, ilovemondays, pls]) => {
       if (!mounted) return;
-      setTop50Data(top50 || {});
+      setTop100Data(top100 || {});
       setIlovemondaysData(ilovemondays || {});
       const arr = Array.isArray(pls?.playlists) ? (pls.playlists as Playlist[]) : [];
       setPlaylists(arr);
@@ -86,7 +86,7 @@ export default function HomeLanding() {
       <div className="overflow-x-auto pb-4">
         <div className="flex gap-4 w-max">
           {renderChartTile("I Love Mondays", ilovemondaysData, "/charts/ilovemondays", "/charts/ilovemondays/select", loading)}
-          {renderChartTile("Weekly Top 50", top50Data, "/charts", "/charts/select", loading)}
+          {renderChartTile("Weekly Top 100", top100Data, "/charts", "/charts/select", loading)}
         </div>
       </div>      <div className="mt-10 flex items-center justify-between">
   <h2 className="text-xl font-bold">My playlists</h2>

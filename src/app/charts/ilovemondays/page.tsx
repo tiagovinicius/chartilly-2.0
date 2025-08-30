@@ -12,7 +12,7 @@ import Link from "next/link";
 export default function ILoveMondaysPage(){
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<{tracks: Array<string | { id: string; name: string; artists: string[]; albumImageUrl: string | null }>, updatedAt: string|null, weekStartDate: string|null, target?: { id: string|null; name: string|null; imageUrl?: string|null; externalUrl?: string|null }}>({tracks: [], updatedAt: null, weekStartDate: null});
-  const [top50Data, setTop50Data] = useState<{target?: { id: string|null; name: string|null; imageUrl?: string|null; externalUrl?: string|null }}>({});
+  const [top100Data, setTop100Data] = useState<{target?: { id: string|null; name: string|null; imageUrl?: string|null; externalUrl?: string|null }}>({});
   const [playlists, setPlaylists] = useState<Array<{id:string; name:string; imageUrl?: string|null}>>([]);
   const [targetType, setTargetType] = useState<"existing"|"new">("existing");
   const [targetPlaylistId, setTargetPlaylistId] = useState<string>("");
@@ -91,8 +91,8 @@ export default function ILoveMondaysPage(){
       try { const params = new URLSearchParams(window.location.search); if (params.get('confirm')) setConfirmOpen(true); } catch {}
     }).finally(()=>setLoading(false));
     fetch("/api/playlists").then(r=>r.json()).then((j)=>{ if (Array.isArray(j.playlists)) setPlaylists(j.playlists); }).catch(()=>{});
-    // Fetch Top 50 data for navigation sheet
-    fetch("/api/charts/top50").then(r=>r.json()).then((j)=>{ setTop50Data(j || {}); }).catch(()=>{});
+    // Fetch Top 100 data for navigation sheet
+    fetch("/api/charts/top50").then(r=>r.json()).then((j)=>{ setTop100Data(j || {}); }).catch(()=>{});
   }, []);
 
   // Keep layout offset equal to toast height while toast is visible
@@ -397,21 +397,20 @@ export default function ILoveMondaysPage(){
               >
                 <div
                   className="w-full aspect-square rounded-md overflow-hidden bg-muted/30 bg-center bg-cover relative"
-                  style={top50Data?.target?.imageUrl ? { backgroundImage: `url(${top50Data.target.imageUrl})` } : undefined}
+                  style={top100Data?.target?.imageUrl ? { backgroundImage: `url(${top100Data.target.imageUrl})` } : undefined}
                 >
-                  {top50Data?.target?.imageUrl && (
+                  {top100Data?.target?.imageUrl ? (
                     <div className="absolute inset-x-0 bottom-0 bg-gradient-to-b from-transparent to-black/60 text-white text-xs px-1 pt-6 pb-1.5">
-                      <span className="block truncate">{top50Data?.target?.name ?? 'Weekly Top 50'}</span>
+                      <span className="block truncate">{top100Data?.target?.name ?? 'Weekly Top 100'}</span>
                     </div>
-                  )}
-                  {!top50Data?.target?.imageUrl && (
+                  ) : (
                     <div className="absolute inset-0 flex items-center justify-center">
                       <span className="text-lg">🏆</span>
                     </div>
                   )}
                 </div>
-                <p className="font-medium text-sm mt-2 text-center">Weekly Top 50</p>
-                <p className="text-xs text-muted-foreground text-center">Your 50 most played songs of the week</p>
+                <p className="font-medium text-sm mt-2 text-center">Weekly Top 100</p>
+                <p className="text-xs text-muted-foreground text-center">Your 100 most played songs of the week</p>
               </a>
 
               <a

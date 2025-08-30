@@ -10,7 +10,7 @@ const poppins = Poppins({ subsets: ["latin"], weight: ["600", "700", "800"], dis
 
 export const metadata: Metadata = {
   title: "chartilly",
-  description: "Smart shuffle & weekly Top 50 for your Spotify playlists",
+  description: "Smart shuffle & weekly Top 100 for your Spotify playlists",
   applicationName: "chartilly",
   manifest: "/manifest.webmanifest",
   icons: [

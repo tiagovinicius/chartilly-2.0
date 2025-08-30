@@ -107,7 +107,7 @@ export const SpotifyAPI = {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token.access_token}`,
       },
-  body: JSON.stringify({ name, description: description ?? "Chartilly Weekly Top 50", public: false }),
+  body: JSON.stringify({ name, description: description ?? "Chartilly Weekly Top 100", public: false }),
     });
     if (!res.ok) throw new Error(`Spotify create playlist failed: ${res.status}`);
     const json: any = await res.json();

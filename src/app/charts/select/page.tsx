@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 export default function ChartsSelectTargetPage(){
   const [playlists, setPlaylists] = useState<Array<{id:string; name:string; imageUrl?: string|null}>>([]);
   const [addOpen, setAddOpen] = useState(false);
-  const [targetName, setTargetName] = useState("Chartilly Top of the Week");
+  const [targetName, setTargetName] = useState("Chartilly Weekly Top 100");
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -21,14 +21,58 @@ export default function ChartsSelectTargetPage(){
 
   async function saveTarget(target: { playlistId?: string; playlistName?: string }){
     try{
-      const res = await fetch('/api/charts/top50/target', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(target) });
-      if(res.ok){ /* ok */ }
-    }catch{}
+      console.log('Attempting to save target:', target);
+      const res = await fetch('/api/charts/top50/target', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(target)
+      });
+
+      console.log('Response status:', res.status);
+
+      if(!res.ok) {
+        const errorText = await res.text();
+        console.error('Server error response:', errorText);
+        throw new Error(`HTTP ${res.status}: ${errorText}`);
+      }
+
+      const result = await res.json();
+      console.log('Target saved successfully:', result);
+      return result;
+    } catch (error) {
+      console.error('Error saving target:', error);
+      throw error;
+    }
   }
 
-  return (
+  async function saveTargetAndRedirect(target: { playlistId?: string; playlistName?: string }) {
+    setBusy(true);
+    try {
+      console.log('Starting save process for:', target);
+
+      // Save the target
+      const saveResult = await saveTarget(target);
+      console.log('Save completed, result:', saveResult);
+
+      // Check if the save was successful by looking at the result
+      if (saveResult && saveResult.ok) {
+        console.log('Save confirmed successful, redirecting...');
+        // Simple delay to ensure everything is processed
+        await new Promise(resolve => setTimeout(resolve, 500));
+        window.location.href = '/charts?confirm=1';
+      } else {
+        console.error('Save result indicates failure:', saveResult);
+        alert('There was an issue saving your selection. Please try again.');
+        setBusy(false);
+      }
+    } catch (error) {
+      console.error('Error in saveTargetAndRedirect:', error);
+      alert('There was an error saving your selection. Please try again.');
+      setBusy(false);
+    }
+  }  return (
     <section className="p-4 space-y-4" aria-labelledby="title">
-      <h1 id="title" className="mt-4 text-2xl md:text-3xl font-bold text-center pb-1 text-[hsl(var(--secondary-foreground))]">Weekly Top 50</h1>
+      <h1 id="title" className="mt-4 text-2xl md:text-3xl font-bold text-center pb-1 text-[hsl(var(--secondary-foreground))]">Weekly Top 100</h1>
       <h2 className="text-lg md:text-xl font-semibold text-center pb-4 text-[hsl(var(--secondary-foreground))]">Choose the destination playlist</h2>
 
       <div className="grid grid-cols-3 gap-3">
@@ -49,7 +93,7 @@ export default function ChartsSelectTargetPage(){
               key={p.id}
               className="w-full aspect-square rounded-md overflow-hidden bg-muted/30 bg-center bg-cover relative"
               style={p.imageUrl ? { backgroundImage: `url(${p.imageUrl})` } : undefined}
-              onClick={async () => { setBusy(true); await saveTarget({ playlistId: p.id }); window.location.href = '/charts?confirm=1'; }}
+              onClick={() => saveTargetAndRedirect({ playlistId: p.id })}
               aria-label={`Use ${p.name}`}
               title={p.name}
             >
@@ -68,13 +112,16 @@ export default function ChartsSelectTargetPage(){
             <SheetTitle>New playlist name</SheetTitle>
           </SheetHeader>
           <div className="space-y-3">
-            <Input value={targetName} onChange={(e)=>setTargetName(e.target.value)} placeholder="Chartilly Top of the Week" />
+            <Input value={targetName} onChange={(e)=>setTargetName(e.target.value)} placeholder="Chartilly Weekly Top 100" />
             <SheetFooter>
               <SheetClose asChild>
                 <Button variant="ghost" size="lg">Cancel</Button>
               </SheetClose>
               <SheetClose asChild>
-                <Button size="lg" disabled={busy} onClick={async ()=>{ const name = (targetName || '').trim() || 'Chartilly Top of the Week'; setBusy(true); await saveTarget({ playlistName: name }); window.location.href = '/charts?confirm=1'; }}>Confirm</Button>
+                <Button size="lg" disabled={busy} onClick={() => {
+                  const name = (targetName || '').trim() || 'Chartilly Weekly Top 100';
+                  saveTargetAndRedirect({ playlistName: name });
+                }}>Confirm</Button>
               </SheetClose>
             </SheetFooter>
           </div>

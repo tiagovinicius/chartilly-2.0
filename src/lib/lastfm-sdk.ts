@@ -32,12 +32,12 @@ export const LastFmAPI = {
     throw new Error("getSession requires api_sig; use route helper to sign request");
   },
 
-  async getWeeklyTop50(username: string, apiKey: string): Promise<LastFmTrack[]> {
+  async getWeeklyTop100(username: string, apiKey: string): Promise<LastFmTrack[]> {
     const url = new URL(LASTFM_API);
     url.searchParams.set("method", "user.gettoptracks");
     url.searchParams.set("user", username);
     url.searchParams.set("period", "7day");
-    url.searchParams.set("limit", "50");
+    url.searchParams.set("limit", "100");
     url.searchParams.set("api_key", apiKey);
     url.searchParams.set("format", "json");
 
@@ -53,12 +53,12 @@ export const LastFmAPI = {
     const now = new Date();
     const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
     const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // If Sunday, go back 6 days, else go back (dayOfWeek - 1) days
-    
+
     // Get last Monday's date
     const lastMonday = new Date(now);
     lastMonday.setDate(now.getDate() - daysFromMonday - 7); // Go back to previous Monday
     lastMonday.setHours(0, 0, 0, 0);
-    
+
     // Calculate end date based on current day
     const endDate = new Date(now);
     if (dayOfWeek === 1) { // If today is Monday

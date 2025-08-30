@@ -15,7 +15,7 @@ export default function ChartsPage(){
   const [playlists, setPlaylists] = useState<Array<{id:string; name:string; imageUrl?: string|null}>>([]);
   const [targetType, setTargetType] = useState<"existing"|"new">("existing");
   const [targetPlaylistId, setTargetPlaylistId] = useState<string>("");
-  const [targetName, setTargetName] = useState<string>("Chartilly Top of the Week");
+  const [targetName, setTargetName] = useState<string>("Chartilly Weekly Top 100");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [forceSheet, setForceSheet] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
@@ -79,14 +79,22 @@ export default function ChartsPage(){
 
   useEffect(() => {
   fetch("/api/charts/top50").then(r=>r.json()).then((j)=>{
+      console.log('Charts API response:', j);
       setData(j);
       if (j?.target?.id) { setTargetType("existing"); setTargetPlaylistId(j.target.id); }
       else if (j?.target?.name) { setTargetType("new"); setTargetName(j.target.name); }
   // If no target configured, redirect to selection page
   const hasTarget = !!(j?.target?.id || j?.target?.name);
-  if (!hasTarget) { window.location.href = '/charts/select'; return; }
+  console.log('Has target:', hasTarget, 'Target:', j?.target);
+  if (!hasTarget) {
+    console.log('No target found, redirecting to /charts/select');
+    window.location.href = '/charts/select';
+    return;
+  }
   // If coming from selection flow with confirm flag, open confirm sheet
   try { const params = new URLSearchParams(window.location.search); if (params.get('confirm')) setConfirmOpen(true); } catch {}
+    }).catch(error => {
+      console.error('Error fetching charts:', error);
     }).finally(()=>setLoading(false));
   fetch("/api/playlists").then(r=>r.json()).then((j)=>{ if (Array.isArray(j.playlists)) setPlaylists(j.playlists); }).catch(()=>{});
   // Fetch I Love Mondays data for navigation sheet
@@ -119,7 +127,7 @@ export default function ChartsPage(){
     else if (override?.playlistName) body.playlistName = override.playlistName;
     else {
       if (targetType === "existing" && targetPlaylistId) body.playlistId = targetPlaylistId;
-      if (targetType === "new") body.playlistName = (targetName || "").trim() || "Chartilly Top of the Week";
+      if (targetType === "new") body.playlistName = (targetName || "").trim() || "Chartilly Weekly Top 100";
     }
     body.savePreference = true;
   const res = await fetch('/api/charts/top50/sync', {method:'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)});
@@ -143,7 +151,7 @@ export default function ChartsPage(){
     onClick={() => setNavigationOpen(true)}
     className="w-full mt-4 pb-4 text-[hsl(var(--secondary-foreground))] hover:text-[hsl(var(--foreground))] transition-colors flex items-center justify-center gap-2"
   >
-    <span className="text-2xl md:text-3xl font-bold">Weekly Top 50</span>
+    <span className="text-2xl md:text-3xl font-bold">Weekly Top 100</span>
     <div className="w-6 h-6 rounded border border-current flex items-center justify-center">
       <ChevronDown className="w-3 h-3" />
     </div>
@@ -233,13 +241,13 @@ export default function ChartsPage(){
                 <SheetTitle>New playlist name</SheetTitle>
               </SheetHeader>
               <div className="space-y-3">
-                <Input value={targetName} onChange={(e)=>setTargetName(e.target.value)} placeholder="Chartilly Top of the Week" />
+                <Input value={targetName} onChange={(e)=>setTargetName(e.target.value)} placeholder="Chartilly Weekly Top 100" />
                 <SheetFooter>
                   <SheetClose asChild>
   <Button variant="ghost" size="lg">Cancel</Button>
                   </SheetClose>
                   <SheetClose asChild>
-  <Button size="lg" onClick={async ()=>{ setTargetType("new"); const name = (targetName || '').trim() || 'Chartilly Top of the Week'; await saveTarget({ playlistName: name }); setForceSheet(false); setSheetOpen(false); setConfirmOverride({ playlistName: name }); setConfirmOpen(true); }}>Confirm</Button>
+  <Button size="lg" onClick={async ()=>{ setTargetType("new"); const name = (targetName || '').trim() || 'Chartilly Weekly Top 100'; await saveTarget({ playlistName: name }); setForceSheet(false); setSheetOpen(false); setConfirmOverride({ playlistName: name }); setConfirmOpen(true); }}>Confirm</Button>
                   </SheetClose>
                 </SheetFooter>
               </div>
@@ -345,7 +353,7 @@ export default function ChartsPage(){
                 >
                   {data?.target?.imageUrl ? (
                     <div className="absolute inset-x-0 bottom-0 bg-gradient-to-b from-transparent to-black/60 text-white text-xs px-1 pt-6 pb-1.5">
-                      <span className="block truncate">{data?.target?.name ?? 'Weekly Top 50'}</span>
+                      <span className="block truncate">{data?.target?.name ?? 'Weekly Top 100'}</span>
                     </div>
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center">
@@ -353,8 +361,8 @@ export default function ChartsPage(){
                     </div>
                   )}
                 </div>
-                <p className="font-medium text-sm mt-2 text-center">Weekly Top 50</p>
-                <p className="text-xs text-muted-foreground text-center">Your 50 most played songs of the week</p>
+                <p className="font-medium text-sm mt-2 text-center">Weekly Top 100</p>
+                <p className="text-xs text-muted-foreground text-center">Your 100 most played songs of the week</p>
               </a>
 
               <a

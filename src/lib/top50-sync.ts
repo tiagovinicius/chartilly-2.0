@@ -17,7 +17,9 @@ export async function performTop50Sync(params: {
   if (!apiKey) throw new Error("missing_lastfm_api_key");
 
   const token = { access_token: spotifyAccessToken } as const;
-  const tracks = await LastFmAPI.getWeeklyTop50(lastfmUsername, apiKey);
+  console.log(`Fetching weekly top 100 tracks for user: ${lastfmUsername}`);
+  const tracks = await LastFmAPI.getWeeklyTop100(lastfmUsername, apiKey);
+  console.log(`Last.fm returned ${tracks.length} tracks`);
 
   const uris: string[] = [];
   const stats: SpotifyTelemetry = { totalRequests: 0, retries: 0, rateLimited: 0 };
@@ -25,6 +27,8 @@ export async function performTop50Sync(params: {
     const uri = await SpotifyAPI.searchTrackUri(token, t.artist, t.title, stats);
     if (uri) uris.push(uri);
   }
+
+  console.log(`Found ${uris.length} Spotify URIs out of ${tracks.length} Last.fm tracks`);
 
   // choose playlist target
   let targetPlaylistId: string;
@@ -41,6 +45,7 @@ export async function performTop50Sync(params: {
     );
   }
 
+    // Persist the chart data in Supabase
   await supabaseAdmin.from("charts_top50").upsert({ user_id: userId, track_ids: uris, generated_at: new Date().toISOString() });
   await SpotifyAPI.replacePlaylistTracks(token, targetPlaylistId, uris);
   await supabaseAdmin.from("events").insert({ user_id: userId, event_type: "top50_sync", status: "ok", payload: { count: uris.length, telemetry: stats, targetPlaylistId } });
