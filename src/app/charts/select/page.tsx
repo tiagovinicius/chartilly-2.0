@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetClose } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
+import { useAuthRedirect } from "@/lib/auth";
 
 export default function ChartsSelectTargetPage(){
   const [playlists, setPlaylists] = useState<Array<{id:string; name:string; imageUrl?: string|null}>>([]);
@@ -10,14 +11,21 @@ export default function ChartsSelectTargetPage(){
   const [targetName, setTargetName] = useState("Chartilly Weekly Top 100");
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
+  const { handleAuthError } = useAuthRedirect();
 
   useEffect(() => {
     fetch("/api/playlists")
       .then(r=>r.json())
-      .then((j)=>{ if (Array.isArray(j.playlists)) setPlaylists(j.playlists); })
+      .then((j)=>{
+        // Handle authentication errors
+        if (handleAuthError(j.error, "/charts/select")) {
+          return; // Redirect happened
+        }
+        if (Array.isArray(j.playlists)) setPlaylists(j.playlists);
+      })
       .catch(()=>{})
       .finally(()=>setLoading(false));
-  }, []);
+  }, [handleAuthError]);
 
   async function saveTarget(target: { playlistId?: string; playlistName?: string }){
     try{
@@ -31,9 +39,26 @@ export default function ChartsSelectTargetPage(){
       console.log('Response status:', res.status);
 
       if(!res.ok) {
-        const errorText = await res.text();
-        console.error('Server error response:', errorText);
-        throw new Error(`HTTP ${res.status}: ${errorText}`);
+        let errorData;
+        try {
+          errorData = await res.json();
+        } catch {
+          const errorText = await res.text();
+          throw new Error(`HTTP ${res.status}: ${errorText}`);
+        }
+
+        console.error('Server error response:', errorData);
+
+        // Check for authentication errors
+        if (res.status === 401) {
+          if (handleAuthError(errorData.error, "/charts/select")) {
+            return; // Redirect happened
+          }
+        }
+
+        // Throw with the server's message if available
+        const message = errorData.message || errorData.error || `HTTP ${res.status}`;
+        throw new Error(message);
       }
 
       const result = await res.json();
@@ -43,9 +68,7 @@ export default function ChartsSelectTargetPage(){
       console.error('Error saving target:', error);
       throw error;
     }
-  }
-
-  async function saveTargetAndRedirect(target: { playlistId?: string; playlistName?: string }) {
+  }  async function saveTargetAndRedirect(target: { playlistId?: string; playlistName?: string }) {
     setBusy(true);
     try {
       console.log('Starting save process for:', target);
@@ -65,9 +88,20 @@ export default function ChartsSelectTargetPage(){
         alert('There was an issue saving your selection. Please try again.');
         setBusy(false);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error in saveTargetAndRedirect:', error);
-      alert('There was an error saving your selection. Please try again.');
+
+      // More specific error messages
+      if (error.message?.includes('401')) {
+        alert('Your session has expired. Please log in again.');
+      } else if (error.message?.includes('400')) {
+        alert('Invalid selection. Please choose a valid playlist or name.');
+      } else if (error.message?.includes('500')) {
+        alert('Server error. Please try again in a moment.');
+      } else {
+        alert('There was an error saving your selection. Please try again.');
+      }
+
       setBusy(false);
     }
   }  return (

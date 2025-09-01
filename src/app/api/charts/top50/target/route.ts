@@ -5,21 +5,33 @@ import { SpotifyAPI } from "@/lib/spotify-sdk";
 
 export async function POST(req: NextRequest) {
   const ownerSpotifyId = req.cookies.get("session")?.value ?? null;
-  if (!ownerSpotifyId) return Response.json({ ok: false, error: "unauthorized" }, { status: 401 });
+  if (!ownerSpotifyId) {
+    console.log('No session cookie found');
+    return Response.json({ ok: false, error: "unauthorized", message: "No session found" }, { status: 401 });
+  }
 
   const body = await req.json().catch(() => ({}));
   let { playlistId, playlistName } = body as { playlistId?: string; playlistName?: string };
   playlistName = (playlistName ?? "").trim();
   if (!playlistId && !playlistName) {
-    return Response.json({ ok: false, error: "missing_target" }, { status: 400 });
+    return Response.json({ ok: false, error: "missing_target", message: "Please provide either a playlist ID or name" }, { status: 400 });
   }
 
-  const { data: user } = await supabase
+  const { data: user, error: userError } = await supabase
     .from("users")
     .select("user_id, spotify_access_token")
     .eq("spotify_user_id", ownerSpotifyId)
     .single();
-  if (!user?.user_id) return Response.json({ ok: false, error: "not_found" }, { status: 404 });
+
+  if (userError) {
+    console.log('User query error:', userError);
+    return Response.json({ ok: false, error: "user_error", message: "Database error", details: userError.message }, { status: 500 });
+  }
+
+  if (!user?.user_id) {
+    console.log('User not found for spotify_user_id:', ownerSpotifyId);
+    return Response.json({ ok: false, error: "not_found", message: "User not found" }, { status: 404 });
+  }
 
   const updates: any = { updated_at: new Date().toISOString() };
   if (playlistId) {
