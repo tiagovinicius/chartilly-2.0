@@ -8,31 +8,32 @@ export async function GET(req: NextRequest) {
 
   const { data: user } = await supabase
     .from("users")
-    .select("user_id, spotify_access_token, top50_playlist_id, top50_playlist_name")
+    .select("user_id, spotify_access_token, top100_playlist_id, top100_playlist_name")
     .eq("spotify_user_id", ownerSpotifyId)
     .single();
-  if (!user?.user_id) return Response.json({ tracks: [], updatedAt: null }, { status: 200 });
+  if (!user?.user_id) return Response.json({ tracks: [], updatedAt: null, target: null });
 
-  const { data: snap } = await supabase
+  // Get current chart
+  const { data: chart } = await supabase
     .from("charts_top50")
     .select("track_ids, generated_at")
     .eq("user_id", user.user_id)
     .single();
 
-  let target: any = { id: user.top50_playlist_id ?? null, name: user.top50_playlist_name ?? null };
-  if (user.top50_playlist_id && user.spotify_access_token) {
+  let target: any = { id: user.top100_playlist_id ?? null, name: user.top100_playlist_name ?? null };
+  if (user.top100_playlist_id && user.spotify_access_token) {
     try {
-      const meta = await SpotifyAPI.getPlaylistMeta({ access_token: user.spotify_access_token }, user.top50_playlist_id);
+      const meta = await SpotifyAPI.getPlaylistMeta({ access_token: user.spotify_access_token }, user.top100_playlist_id);
       target = { id: meta.id, name: meta.name, imageUrl: meta.imageUrl, externalUrl: meta.externalUrl };
     } catch {}
   }
 
   // Enrich track IDs to metadata if we have a token
-  let tracksOut: any = snap?.track_ids ?? [];
-  if (Array.isArray(snap?.track_ids) && user.spotify_access_token && (snap.track_ids as string[]).length > 0) {
+  let tracksOut: any = chart?.track_ids ?? [];
+  if (Array.isArray(chart?.track_ids) && user.spotify_access_token && (chart.track_ids as string[]).length > 0) {
     try {
       // Convert spotify:track:ID -> ID or accept raw IDs
-      const ids = (snap.track_ids as string[]).map((s) => {
+      const ids = (chart.track_ids as string[]).map((s) => {
         if (!s) return s;
         const parts = s.split(":");
         return parts.length === 3 ? parts[2] : s;
@@ -46,13 +47,13 @@ export async function GET(req: NextRequest) {
       }));
     } catch {
       // fallback to raw ids on error
-      tracksOut = snap?.track_ids ?? [];
+      tracksOut = chart?.track_ids ?? [];
     }
   }
 
   return Response.json({
     tracks: tracksOut,
-    updatedAt: (snap?.generated_at ?? null) as string | null,
+    updatedAt: (chart?.generated_at ?? null) as string | null,
     target,
   });
 }

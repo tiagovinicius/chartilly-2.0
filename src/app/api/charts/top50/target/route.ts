@@ -35,11 +35,11 @@ export async function POST(req: NextRequest) {
 
   const updates: any = { updated_at: new Date().toISOString() };
   if (playlistId) {
-    updates.top50_playlist_id = playlistId;
-    updates.top50_playlist_name = null;
+    updates.top100_playlist_id = playlistId;
+    updates.top100_playlist_name = null;
   } else {
-    updates.top50_playlist_id = null;
-    updates.top50_playlist_name = playlistName || "Chartilly Weekly Top 100";
+    updates.top100_playlist_id = null;
+    updates.top100_playlist_name = playlistName || "Chartilly Weekly Top 100";
   }
 
   console.log('Updating user with:', updates);
@@ -51,10 +51,10 @@ export async function POST(req: NextRequest) {
   }
 
   // Build target response, optionally enrich with meta
-  let target: any = { id: updates.top50_playlist_id ?? null, name: updates.top50_playlist_name ?? null };
-  if (updates.top50_playlist_id && user.spotify_access_token) {
+  let target: any = { id: updates.top100_playlist_id ?? null, name: updates.top100_playlist_name ?? null };
+  if (updates.top100_playlist_id && user.spotify_access_token) {
     try {
-      const meta = await SpotifyAPI.getPlaylistMeta({ access_token: user.spotify_access_token }, updates.top50_playlist_id);
+      const meta = await SpotifyAPI.getPlaylistMeta({ access_token: user.spotify_access_token }, updates.top100_playlist_id);
       target = { id: meta.id, name: meta.name, imageUrl: meta.imageUrl, externalUrl: meta.externalUrl };
     } catch {}
   }
