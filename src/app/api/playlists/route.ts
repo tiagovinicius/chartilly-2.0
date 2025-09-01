@@ -12,6 +12,7 @@ export async function GET(req: NextRequest) {
     .from("users")
     .select("user_id, spotify_access_token, spotify_refresh_token")
     .eq("spotify_user_id", ownerSpotifyId)
+    .limit(1)
     .single();
   if (error || !user?.spotify_access_token) {
     // log fail

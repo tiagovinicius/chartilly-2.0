@@ -5,9 +5,14 @@ import { useAuthRedirect } from "@/lib/auth";
 export default function PlaylistsPage(){
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<{playlists: any[]; error?: string}>({playlists: []});
+  const [initialized, setInitialized] = useState(false);
   const { handleAuthError } = useAuthRedirect();
 
   useEffect(() => {
+    if (initialized) return; // Prevent re-execution
+
+    setInitialized(true);
+
     fetch("/api/playlists")
       .then(r => r.json())
       .then((result) => {
@@ -19,7 +24,9 @@ export default function PlaylistsPage(){
         }
       })
       .finally(() => setLoading(false));
-  }, [handleAuthError]);  return (
+  }, []); // Remove handleAuthError from dependencies
+
+  return (
     <section className="p-4" aria-labelledby="title">
   <h1 id="title" className="mt-4 text-2xl md:text-3xl font-bold text-center pb-4 text-[hsl(var(--secondary-foreground))]">My playlists</h1>
       {data.error === "unauthorized" || data.error === "no_token" ? (

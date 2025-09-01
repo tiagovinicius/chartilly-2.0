@@ -25,6 +25,7 @@ export default function ChartsPage(){
   const [navigationOpen, setNavigationOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<{ open: boolean; message: string; variant: "info"|"success"|"error"; loading?: boolean }>({ open: false, message: "", variant: "info" });
+  const [initialized, setInitialized] = useState(false);
   const toastTimer = useRef<number | null>(null);
   const toastRef = useRef<HTMLDivElement | null>(null);
   const [toastOffset, setToastOffset] = useState(0);
@@ -80,46 +81,50 @@ export default function ChartsPage(){
   }
 
   useEffect(() => {
-  fetch("/api/charts/top50").then(r=>r.json()).then((j)=>{
-      console.log('Charts API response:', j);
+    if (initialized) return; // Prevent re-execution
 
-      // Handle authentication errors
-      if (handleAuthError(j.error, "/charts")) {
-        return; // Redirect happened
+    setInitialized(true);
+
+    fetch("/api/charts/top50").then(r=>r.json()).then((j)=>{
+        console.log('Charts API response:', j);
+
+        // Handle authentication errors
+        if (handleAuthError(j.error, "/charts")) {
+          return; // Redirect happened
+        }
+
+        setData(j);
+        if (j?.target?.id) { setTargetType("existing"); setTargetPlaylistId(j.target.id); }
+        else if (j?.target?.name) { setTargetType("new"); setTargetName(j.target.name); }
+    // If no target configured, redirect to selection page
+    const hasTarget = !!(j?.target?.id || j?.target?.name);
+    console.log('Has target:', hasTarget, 'Target:', j?.target);
+    if (!hasTarget) {
+      console.log('No target found, redirecting to /charts/select');
+      window.location.href = '/charts/select';
+      return;
+    }
+    // If coming from selection flow with confirm flag, open confirm sheet
+    try { const params = new URLSearchParams(window.location.search); if (params.get('confirm')) setConfirmOpen(true); } catch {}
+      }).catch(error => {
+        console.error('Error fetching charts:', error);
+      }).finally(()=>setLoading(false));
+
+    fetch("/api/playlists").then(r=>r.json()).then((j)=>{
+      // Handle auth errors in playlists
+      if (!handleAuthError(j.error, "/charts")) {
+        if (Array.isArray(j.playlists)) setPlaylists(j.playlists);
       }
+    }).catch(()=>{});
 
-      setData(j);
-      if (j?.target?.id) { setTargetType("existing"); setTargetPlaylistId(j.target.id); }
-      else if (j?.target?.name) { setTargetType("new"); setTargetName(j.target.name); }
-  // If no target configured, redirect to selection page
-  const hasTarget = !!(j?.target?.id || j?.target?.name);
-  console.log('Has target:', hasTarget, 'Target:', j?.target);
-  if (!hasTarget) {
-    console.log('No target found, redirecting to /charts/select');
-    window.location.href = '/charts/select';
-    return;
-  }
-  // If coming from selection flow with confirm flag, open confirm sheet
-  try { const params = new URLSearchParams(window.location.search); if (params.get('confirm')) setConfirmOpen(true); } catch {}
-    }).catch(error => {
-      console.error('Error fetching charts:', error);
-    }).finally(()=>setLoading(false));
-
-  fetch("/api/playlists").then(r=>r.json()).then((j)=>{
-    // Handle auth errors in playlists
-    if (!handleAuthError(j.error, "/charts")) {
-      if (Array.isArray(j.playlists)) setPlaylists(j.playlists);
-    }
-  }).catch(()=>{});
-
-  // Fetch I Love Mondays data for navigation sheet
-  fetch("/api/charts/ilovemondays").then(r=>r.json()).then((j)=>{
-    // Handle auth errors
-    if (!handleAuthError(j.error, "/charts")) {
-      setIlovemondaysData(j || {});
-    }
-  }).catch(()=>{});
-  }, [handleAuthError]);
+    // Fetch I Love Mondays data for navigation sheet
+    fetch("/api/charts/ilovemondays").then(r=>r.json()).then((j)=>{
+      // Handle auth errors
+      if (!handleAuthError(j.error, "/charts")) {
+        setIlovemondaysData(j || {});
+      }
+    }).catch(()=>{});
+  }, []); // Remove handleAuthError from dependencies
 
   // Keep layout offset equal to toast height while toast is visible
   useEffect(() => {
@@ -314,6 +319,29 @@ export default function ChartsPage(){
             </li>
           ))}
         </ol>
+      ) : data.tracks.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-muted-foreground mb-4">No tracks found. Generate your Weekly Top 100 by syncing your Last.fm data.</p>
+          <Button
+            onClick={() => {
+              if (!data.target?.id && !data.target?.name) {
+                window.location.href = '/charts/select';
+              } else {
+                syncNow();
+              }
+            }}
+            disabled={busy}
+          >
+            {busy ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Syncing...
+              </>
+            ) : (
+              'Generate Top 100'
+            )}
+          </Button>
+        </div>
       ) : (
         <ol className="space-y-3">
           {data.tracks.map((t: any, i) => {

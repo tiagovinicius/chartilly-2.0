@@ -14,6 +14,7 @@ export async function POST(req: NextRequest) {
     .from("users")
     .select("user_id, spotify_access_token, spotify_refresh_token, lastfm_session_key, lastfm_username, top100_playlist_id, top100_playlist_name")
     .eq("spotify_user_id", ownerSpotifyId)
+    .limit(1)
     .single();
   if (!userRow?.spotify_access_token || !userRow?.user_id) return Response.json({ ok: false, error: "no_token" }, { status: 401 });
   if (!userRow.lastfm_username) return Response.json({ ok: false, error: "missing_lastfm_username" }, { status: 400 });

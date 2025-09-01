@@ -10,12 +10,13 @@ export async function GET(req: NextRequest) {
     .from("users")
     .select("user_id, spotify_access_token, top100_playlist_id, top100_playlist_name")
     .eq("spotify_user_id", ownerSpotifyId)
+    .limit(1)
     .single();
   if (!user?.user_id) return Response.json({ tracks: [], updatedAt: null, target: null });
 
   // Get current chart
   const { data: chart } = await supabase
-    .from("charts_top50")
+    .from("charts_top100")
     .select("track_ids, generated_at")
     .eq("user_id", user.user_id)
     .single();

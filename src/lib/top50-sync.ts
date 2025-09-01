@@ -84,7 +84,7 @@ export async function performTop50Sync(params: {
   }
 
     // Persist the chart data in Supabase
-  await supabaseAdmin.from("charts_top50").upsert({ user_id: userId, track_ids: uris, generated_at: new Date().toISOString() });
+  await supabaseAdmin.from("charts_top100").upsert({ user_id: userId, track_ids: uris, generated_at: new Date().toISOString() });
   await SpotifyAPI.replacePlaylistTracks(token, targetPlaylistId, uris);
   await supabaseAdmin.from("events").insert({ user_id: userId, event_type: "top50_sync", status: "ok", payload: { count: uris.length, telemetry: stats, targetPlaylistId } });
 
