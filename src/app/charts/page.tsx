@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetClose } from "@/components/ui/sheet";
+import { useAuthRedirect } from "@/lib/auth";
 
 export default function ChartsPage(){
   const [loading, setLoading] = useState(true);
@@ -27,6 +28,7 @@ export default function ChartsPage(){
   const toastTimer = useRef<number | null>(null);
   const toastRef = useRef<HTMLDivElement | null>(null);
   const [toastOffset, setToastOffset] = useState(0);
+  const { handleAuthError } = useAuthRedirect();
 
   function showToast(message: string, opts?: { variant?: "info"|"success"|"error"; loading?: boolean; durationMs?: number }){
     // clear any prior auto-hide timer
@@ -80,6 +82,12 @@ export default function ChartsPage(){
   useEffect(() => {
   fetch("/api/charts/top50").then(r=>r.json()).then((j)=>{
       console.log('Charts API response:', j);
+
+      // Handle authentication errors
+      if (handleAuthError(j.error, "/charts")) {
+        return; // Redirect happened
+      }
+
       setData(j);
       if (j?.target?.id) { setTargetType("existing"); setTargetPlaylistId(j.target.id); }
       else if (j?.target?.name) { setTargetType("new"); setTargetName(j.target.name); }
@@ -96,10 +104,22 @@ export default function ChartsPage(){
     }).catch(error => {
       console.error('Error fetching charts:', error);
     }).finally(()=>setLoading(false));
-  fetch("/api/playlists").then(r=>r.json()).then((j)=>{ if (Array.isArray(j.playlists)) setPlaylists(j.playlists); }).catch(()=>{});
+
+  fetch("/api/playlists").then(r=>r.json()).then((j)=>{
+    // Handle auth errors in playlists
+    if (!handleAuthError(j.error, "/charts")) {
+      if (Array.isArray(j.playlists)) setPlaylists(j.playlists);
+    }
+  }).catch(()=>{});
+
   // Fetch I Love Mondays data for navigation sheet
-  fetch("/api/charts/ilovemondays").then(r=>r.json()).then((j)=>{ setIlovemondaysData(j || {}); }).catch(()=>{});
-  }, []);
+  fetch("/api/charts/ilovemondays").then(r=>r.json()).then((j)=>{
+    // Handle auth errors
+    if (!handleAuthError(j.error, "/charts")) {
+      setIlovemondaysData(j || {});
+    }
+  }).catch(()=>{});
+  }, [handleAuthError]);
 
   // Keep layout offset equal to toast height while toast is visible
   useEffect(() => {
