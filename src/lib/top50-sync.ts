@@ -23,9 +23,30 @@ export async function performTop50Sync(params: {
 
   const uris: string[] = [];
   const stats: SpotifyTelemetry = { totalRequests: 0, retries: 0, rateLimited: 0 };
-  for (const t of tracks) {
-    const uri = await SpotifyAPI.searchTrackUri(token, t.artist, t.title, stats);
-    if (uri) uris.push(uri);
+
+  // Process tracks in parallel batches to speed up the sync
+  const BATCH_SIZE = 10; // Process 10 tracks at once
+  const batches: typeof tracks[] = [];
+  for (let i = 0; i < tracks.length; i += BATCH_SIZE) {
+    batches.push(tracks.slice(i, i + BATCH_SIZE));
+  }
+
+  console.log(`Processing ${tracks.length} tracks in ${batches.length} batches of ${BATCH_SIZE}`);
+
+  for (const batch of batches) {
+    const batchPromises = batch.map(async (t) => {
+      try {
+        return await SpotifyAPI.searchTrackUri(token, t.artist, t.title, stats);
+      } catch (error) {
+        console.warn(`Failed to search for ${t.artist} - ${t.title}:`, error);
+        return null;
+      }
+    });
+
+    const batchResults = await Promise.all(batchPromises);
+    for (const uri of batchResults) {
+      if (uri) uris.push(uri);
+    }
   }
 
   console.log(`Found ${uris.length} Spotify URIs out of ${tracks.length} Last.fm tracks`);

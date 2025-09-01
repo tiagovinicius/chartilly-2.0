@@ -46,50 +46,32 @@ export const SpotifyAPI = {
     const artistN = norm(artist);
     const titleN = norm(title);
 
-    const queries: string[] = [
-      `track:${titleN} artist:${artistN}`,
-      `"${titleN}" ${artistN}`,
-      `${titleN} ${artistN}`,
-    ];
+    // Use only the most effective query first to reduce API calls
+    const q = encodeURIComponent(`track:"${titleN}" artist:"${artistN}"`);
 
-    const maxAttempts = 4;
-    let attempt = 0;
-
-    while (attempt < maxAttempts) {
-      const q = encodeURIComponent(queries[Math.min(attempt, queries.length - 1)]);
+    try {
       stats && (stats.totalRequests += 1);
-      const res: Response = await fetch(`${SPOTIFY_API}/search?type=track&limit=1&q=${q}`, { headers });
-
-      if (res.status === 429) {
-        stats && (stats.rateLimited += 1, stats.retries += 1);
-        const retryAfter = Number(res.headers.get("retry-after")) || 1;
-        await sleep(retryAfter * 1000);
-        attempt++;
-        continue;
-      }
+      const res: Response = await fetchWithRetry(`${SPOTIFY_API}/search?type=track&limit=1&q=${q}`, { headers }, 2, stats);
 
       if (res.ok) {
         const json: any = await res.json();
         const uri = json?.tracks?.items?.[0]?.uri as string | undefined;
         if (uri) return uri;
-        // no result; backoff before next variant/attempt
-        const backoff = Math.min(1200, 300 * 2 ** attempt) + Math.floor(Math.random() * 100);
-        await sleep(backoff);
-        attempt++;
-        stats && (stats.retries += 1);
-        continue;
       }
 
-      // transient server errors retry; others fail fast
-      if (res.status >= 500 && res.status < 600) {
-        const backoff = Math.min(2000, 300 * 2 ** attempt) + Math.floor(Math.random() * 100);
-        await sleep(backoff);
-        attempt++;
-        stats && (stats.retries += 1);
-        continue;
-      }
+      // If the precise search fails, try a fallback with looser matching
+      const fallbackQ = encodeURIComponent(`${titleN} ${artistN}`);
+      stats && (stats.totalRequests += 1);
+      const fallbackRes = await fetchWithRetry(`${SPOTIFY_API}/search?type=track&limit=1&q=${fallbackQ}`, { headers }, 1, stats);
 
-      return null;
+      if (fallbackRes.ok) {
+        const json: any = await fallbackRes.json();
+        const uri = json?.tracks?.items?.[0]?.uri as string | undefined;
+        if (uri) return uri;
+      }
+    } catch (error) {
+      // Log and continue - don't let one failed search break the whole sync
+      console.warn(`Search failed for ${artistN} - ${titleN}:`, error);
     }
 
     return null;
