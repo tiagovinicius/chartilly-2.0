@@ -33,12 +33,26 @@ export async function performTop50Sync(params: {
 
   console.log(`Processing ${tracks.length} tracks in ${batches.length} batches of ${BATCH_SIZE}`);
 
+  let cacheHits = 0;
+  let cacheMisses = 0;
+
   for (const batch of batches) {
     const batchPromises = batch.map(async (t) => {
       try {
-        return await SpotifyAPI.searchTrackUri(token, t.artist, t.title, stats);
+        const initialRequests = stats.totalRequests;
+        const uri = await SpotifyAPI.searchTrackUri(token, t.artist, t.title, stats);
+
+        // Track cache performance: if totalRequests didn't increase, it was a cache hit
+        if (stats.totalRequests === initialRequests) {
+          cacheHits++;
+        } else {
+          cacheMisses++;
+        }
+
+        return uri;
       } catch (error) {
         console.warn(`Failed to search for ${t.artist} - ${t.title}:`, error);
+        cacheMisses++;
         return null;
       }
     });
@@ -49,7 +63,10 @@ export async function performTop50Sync(params: {
     }
   }
 
+  const cacheHitRate = tracks.length > 0 ? ((cacheHits / tracks.length) * 100).toFixed(1) : '0.0';
   console.log(`Found ${uris.length} Spotify URIs out of ${tracks.length} Last.fm tracks`);
+  console.log(`Cache performance: ${cacheHits} hits, ${cacheMisses} misses (${cacheHitRate}% hit rate)`);
+  console.log(`Spotify API calls saved: ${cacheHits} (${stats.totalRequests} actual calls made)`);
 
   // choose playlist target
   let targetPlaylistId: string;

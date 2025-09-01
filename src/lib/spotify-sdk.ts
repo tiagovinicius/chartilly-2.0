@@ -1,3 +1,5 @@
+import { supabaseAdmin } from "./supabase-admin";
+
 export type SpotifyToken = { access_token: string; refresh_token?: string; expires_in?: number; token_type?: string };
 
 export type SpotifyProfile = { id: string; display_name?: string; email?: string };
@@ -6,6 +8,74 @@ export type SpotifyTelemetry = { totalRequests: number; retries: number; rateLim
 
 const SPOTIFY_API = "https://api.spotify.com/v1";
 const SPOTIFY_TOKEN_URL = "https://accounts.spotify.com/api/token";
+
+// Spotify Track Cache functions
+const SpotifyCache = {
+  // Normalize strings for consistent cache lookups
+  normalize: (str: string): string => {
+    return str.trim().toLowerCase()
+      .replace(/[^\w\s]/g, '') // Remove special characters
+      .replace(/\s+/g, ' '); // Normalize whitespace
+  },
+
+  // Check cache for existing track
+  async get(artist: string, title: string): Promise<string | null> {
+    try {
+      const normalizedArtist = SpotifyCache.normalize(artist);
+      const normalizedTitle = SpotifyCache.normalize(title);
+
+      const { data, error } = await supabaseAdmin
+        .from('spotify_track_cache')
+        .select('spotify_uri')
+        .eq('artist', normalizedArtist)
+        .eq('title', normalizedTitle)
+        .single();
+
+      if (error || !data) return null;
+
+      // Update access tracking
+      await supabaseAdmin
+        .from('spotify_track_cache')
+        .update({
+          last_accessed_at: new Date().toISOString()
+        })
+        .eq('artist', normalizedArtist)
+        .eq('title', normalizedTitle);
+
+      // Increment access count separately
+      await supabaseAdmin.rpc('increment_cache_access', {
+        p_artist: normalizedArtist,
+        p_title: normalizedTitle
+      });      return data.spotify_uri;
+    } catch (error) {
+      console.warn('Cache get failed:', error);
+      return null;
+    }
+  },
+
+  // Store successful search result
+  async set(artist: string, title: string, spotifyUri: string): Promise<void> {
+    try {
+      const normalizedArtist = SpotifyCache.normalize(artist);
+      const normalizedTitle = SpotifyCache.normalize(title);
+
+      await supabaseAdmin
+        .from('spotify_track_cache')
+        .upsert({
+          artist: normalizedArtist,
+          title: normalizedTitle,
+          spotify_uri: spotifyUri,
+          last_accessed_at: new Date().toISOString(),
+          access_count: 1
+        }, {
+          onConflict: 'artist,title'
+        });
+    } catch (error) {
+      console.warn('Cache set failed:', error);
+      // Don't throw - caching is optional
+    }
+  }
+};
 
 // small helper for backoff
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -39,12 +109,19 @@ async function fetchWithRetry(url: string, init: RequestInit, maxAttempts = 4, s
 
 export const SpotifyAPI = {
   async searchTrackUri(token: SpotifyToken, artist: string, title: string, stats?: SpotifyTelemetry): Promise<string | null> {
-    const headers = { Authorization: `Bearer ${token.access_token}` } as const;
-
     // normalize inputs a bit
     const norm = (s: string) => s.trim();
     const artistN = norm(artist);
     const titleN = norm(title);
+
+    // Check cache first
+    const cachedUri = await SpotifyCache.get(artistN, titleN);
+    if (cachedUri) {
+      stats && (stats.totalRequests += 0); // No API call made
+      return cachedUri;
+    }
+
+    const headers = { Authorization: `Bearer ${token.access_token}` } as const;
 
     // Use only the most effective query first to reduce API calls
     const q = encodeURIComponent(`track:"${titleN}" artist:"${artistN}"`);
@@ -56,7 +133,11 @@ export const SpotifyAPI = {
       if (res.ok) {
         const json: any = await res.json();
         const uri = json?.tracks?.items?.[0]?.uri as string | undefined;
-        if (uri) return uri;
+        if (uri) {
+          // Cache successful result
+          await SpotifyCache.set(artistN, titleN, uri);
+          return uri;
+        }
       }
 
       // If the precise search fails, try a fallback with looser matching
@@ -67,7 +148,11 @@ export const SpotifyAPI = {
       if (fallbackRes.ok) {
         const json: any = await fallbackRes.json();
         const uri = json?.tracks?.items?.[0]?.uri as string | undefined;
-        if (uri) return uri;
+        if (uri) {
+          // Cache successful fallback result
+          await SpotifyCache.set(artistN, titleN, uri);
+          return uri;
+        }
       }
     } catch (error) {
       // Log and continue - don't let one failed search break the whole sync
@@ -75,9 +160,7 @@ export const SpotifyAPI = {
     }
 
     return null;
-  },
-
-  async getOrCreatePlaylistByName(token: SpotifyToken, ownerId: string, name: string, description?: string): Promise<string> {
+  },  async getOrCreatePlaylistByName(token: SpotifyToken, ownerId: string, name: string, description?: string): Promise<string> {
     // try to find existing
     const playlists = await this.listUserPlaylists(token, ownerId);
     const found = playlists.find(p => p.name === name);
